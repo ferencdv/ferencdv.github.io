@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Interactive Map Tool - Ferenc Dalnoki-Veress</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Interactive Map Tool</h1>
+        <p>Created by Ferenc Dalnoki-Veress (MIIS/CNS)</p>
+    </header>
+    <div id="map-container">
+        <div id="map"></div>
+        <div id="controls">
+            <input type="number" id="radius" value="0.2" step="0.01" placeholder="Radius in km">
+            <button onclick="placeCircle()">Place Circle</button>
+            <button onclick="clearCircles()">Clear All</button>
+        </div>
+    </div>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
