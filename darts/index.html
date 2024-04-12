@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dart Simulation to Motivate SSKP - F. Dalnoki-Veress (CNS/MIIS)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/1.33.1/plotly.min.js"></script>
+</head>
+<body>
+
+<h2>Dart Simulation to Motivate SSKP - F. Dalnoki-Veress (CNS/MIIS)</h2>
+<div>
+  <label for="n-slider">Number of Darts: <span id="n-value">100</span></label>
+  <input type="range" id="n-slider" min="10" max="1000" value="100" step="10">
+</div>
+<div>
+  <label for="sigma-x-slider">Sigma X: <span id="sigma-x-value">15</span></label>
+  <input type="range" id="sigma-x-slider" min="1" max="50" value="15">
+</div>
+<div>
+  <label for="sigma-y-slider">Sigma Y: <span id="sigma-y-value">15</span></label>
+  <input type="range" id="sigma-y-slider" min="1" max="50" value="15">
+</div>
+<div>
+  Distribution: 
+  <label><input type="radio" name="distribution" value="gaussian" checked> Gaussian</label>
+  <label><input type="radio" name="distribution" value="uniform"> Uniform</label>
+</div>
+
+<div id="plot" style="width: 600px; height: 800px;"></div>
+
+<script>
+    const nSlider = document.getElementById('n-slider');
+    const nValueDisplay = document.getElementById('n-value');
+    const sigmaXSlider = document.getElementById('sigma-x-slider');
+    const sigmaXValueDisplay = document.getElementById('sigma-x-value');
+    const sigmaYSlider = document.getElementById('sigma-y-slider');
+    const sigmaYValueDisplay = document.getElementById('sigma-y-value');
+    const distributionRadios = document.getElementsByName('distribution');
+
+    function updatePlot() {
+        const n = parseInt(nSlider.value, 10);
+        const sigmaX = parseFloat(sigmaXSlider.value);
+        const sigmaY = parseFloat(sigmaYSlider.value);
+        const distributionType = document.querySelector('input[name="distribution"]:checked').value;
+        const data = distributionType === 'gaussian' ? 
+                     generateGaussianData(n, sigmaX, sigmaY) : generateUniformData(n, sigmaX, sigmaY);
+        
+        const dartTrace = {
+            x: data.x,
+            y: data.y,
+            mode: 'markers',
+            type: 'scatter',
+            marker: { color: 'red', size: 8 },
+            name: 'Darts',
+            xaxis: 'x1',
+            yaxis: 'y1'
+        };
+
+        const histogramXTrace = {
+            x: data.x,
+            type: 'histogram',
+            marker: { color: 'blue' },
+            name: 'X Distribution',
+            xbins: { start: -50, end: 50, size: 1 },
+            xaxis: 'x2',
+            yaxis: 'y2'
+        };
+
+        const histogramYTrace = {
+            y: data.y,
+            type: 'histogram',
+            marker: { color: 'green' },
+            name: 'Y Distribution',
+            ybins: { start: -50, end: 50, size: 1 },
+            xaxis: 'x3',
+            yaxis: 'y3'
+        };
+
+        const layout = {
+            title: 'Dartboard Hits and Axis Distributions',
+            grid: { rows: 3, columns: 1, pattern: 'independent', roworder: 'top to bottom'},
+            xaxis: { range: [-50, 50], title: 'Dartboard X-Axis', domain: [0, 1], anchor: 'y1' },
+            yaxis: { range: [-50, 50], title: 'Dartboard Y-Axis', domain: [0.65, 1], scaleanchor: 'x', scaleratio: 1, anchor: 'x1' },
+            xaxis2: { range: [-50, 50], title: 'X-Axis Distribution', domain: [0, 1], anchor: 'y2' },
+            yaxis2: { title: 'Count', domain: [0.35, 0.55], anchor: 'x2' },
+            xaxis3: { title: 'Count', domain: [0, 1], anchor: 'y3' },
+            yaxis3: { range: [-50, 50], title: 'Y-Axis Distribution', domain: [0, 0.25], anchor: 'x3' },
+            shapes: [
+                {
+                    type: 'circle',
+                    xref: 'x1',
+                    yref: 'y1',
+                    x0: -45,
+                    y0: -45,
+                    x1: 45,
+                    y1: 45,
+                    line: { color: 'black', width: 2 }
+                }
+            ],
+            showlegend: false
+        };
+
+        Plotly.newPlot('plot', [dartTrace, histogramXTrace, histogramYTrace], layout);
+    }
+
+    function generateGaussianData(n, sigmaX, sigmaY) {
+        let x = [];
+        let y = [];
+        for (let i = 0; i < n; i++) {
+            x.push(randomGaussian() * sigmaX);
+            y.push(randomGaussian() * sigmaY);
+        }
+        return {x: x, y: y};
+    }
+
+    function generateUniformData(n, sigmaX, sigmaY) {
+        let x = [];
+        let y = [];
+        for (let i = 0; i < n; i++) {
+            x.push(Math.random() * 2 * sigmaX - sigmaX);
+            y.push(Math.random() * 2 * sigmaY - sigmaY);
+        }
+        return {x: x, y: y};
+    }
+
+    function randomGaussian() {
+        let u = 0, v = 0;
+        while (u === 0) u = Math.random();
+        while (v === 0) v = Math.random();
+        return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+    }
+
+    // Event listeners for the sliders and radio buttons
+    nSlider.oninput = function() {
+        nValueDisplay.innerHTML = this.value;
+        updatePlot();
+    }
+    sigmaXSlider.oninput = function() {
+        sigmaXValueDisplay.innerHTML = this.value;
+        updatePlot();
+    }
+    sigmaYSlider.oninput = function() {
+        sigmaYValueDisplay.innerHTML = this.value;
+        updatePlot();
+    }
+    Array.from(distributionRadios).forEach(radio => {
+        radio.onchange = updatePlot;
+    });
+
+    // Initial plot
+    updatePlot();
+</script>
+</body>
+</html>
