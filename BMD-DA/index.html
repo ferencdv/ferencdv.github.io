@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>BMD Defended Area Sim - Ferenc Dalnoki-Veress</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        button {
+            padding: 5px 10px; /* Reduces padding inside the button */
+            font-size: 12px; /* Reduces the font size */
+            /* Optional: you can also explicitly set height and width */
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="title-with-logos">
+            <img src="CNS_Logo.png" alt="CNS Logo" class="logo left-logo">
+            <h1>Ballistic Missile Defense Defended Area</h1>
+            <img src="MIIS_Logo.png" alt="MIIS Logo" class="logo right-logo">
+        </div>
+        
+        <p>Ferenc Dalnoki-Veress (MIIS/CNS)</p>
+        <p>R<sub>FE</sub>,R<sub>BE</sub>,R<sub>SE</sub> defined as in P. Mantle, The Missile Defense Equation </p>
+        <p class="instructions">
+            Click on shape to delete, drag red dot out to rotate. Note that the shape changes when you rotate it because as a consequence of the mathematical properties of the Web Mercator projection.
+        </p>
+
+    </header>
+    <div id="map-container">
+        <div id="map"></div>
+        <!-- Stacked input controls for R_FE, R_BE, and R_SE -->
+        <div id="controls">
+            <div class="input-group">
+                <!-- Adjusted label for R_FE with FE as subscript -->
+                <label for="R_FE">R<sub>FE</sub> (km):</label>
+                <input type="number" id="R_FE" step="1" value="100"> <!-- Assuming default value is 100 -->
+            </div>
+            <div class="input-group">
+                <!-- Adjusted label for R_BE with BE as subscript -->
+                <label for="R_BE">R<sub>BE</sub> (km):</label>
+                <input type="number" id="R_BE" step="1" value="100"> <!-- Assuming default value is 50 -->
+            </div>
+            <div class="input-group">
+                <!-- Adjusted label for R_SE with SE as subscript -->
+                <label for="R_SE">R<sub>SE</sub> (km):</label>
+                <input type="number" id="R_SE" step="1" value="50"> <!-- Assuming default value is 75 -->
+            </div>
+            <button onclick="placeOviform()">Place Defended Area</button>
+            <button onclick="clearOviforms()">Clear All</button>
+        </div>
+    </div>
+    <div class="console">
+        <p class="instructions">
+            Click on shape to delete, drag red dot out to rotate. Note that the shape changes because of the Leaflet Map projection.
+        </p>
+    </div>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
