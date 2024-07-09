@@ -6,68 +6,7 @@
     <title>AI Negotiation Documents</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Roboto', sans-serif;
-            line-height: 1.6;
-            margin: 0;
-            padding: 0;
-            background-color: #f5f5f5;
-            color: #333;
-        }
-        .container {
-            max-width: 95%;
-            margin: 0 auto;
-            padding: 20px;
-            overflow-x: auto;
-        }
-        h1 {
-            text-align: center;
-            color: #2c3e50;
-            margin-bottom: 30px;
-            font-weight: 700;
-        }
-        table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-            background-color: white;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
-        }
-        th, td {
-            padding: 15px;
-            text-align: left;
-            border-right: 1px solid #e0e0e0;
-            border-bottom: 1px solid #e0e0e0;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-            vertical-align: top;
-        }
-        th {
-            background-color: #3498db;
-            color: white;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            position: relative;
-        }
-        th:last-child, td:last-child {
-            border-right: none;
-        }
-        tr:nth-child(even) {
-            background-color: #f9f9f9;
-        }
-        tr:hover {
-            background-color: #f1f1f1;
-        }
-        a {
-            color: #3498db;
-            text-decoration: none;
-            transition: color 0.3s ease;
-        }
-        a:hover {
-            color: #2980b9;
-            text-decoration: underline;
-        }
+        /* ... (keep the existing styles) ... */
         .resizer {
             position: absolute;
             top: 0;
@@ -81,11 +20,10 @@
         .resizer:hover, .resizing {
             background-color: #0000ff;
         }
-        .filename { width: 25%; }
-        .author { width: 15%; }
-        .year { width: 7%; }
-        .findings { width: 28%; }
-        .keywords { width: 25%; }
+        td.expanded {
+            white-space: normal;
+            word-wrap: break-word;
+        }
     </style>
 </head>
 <body>
@@ -94,11 +32,11 @@
         <table id="documentTable">
             <thead>
                 <tr>
-                    <th class="filename">Filename<div class="resizer"></div></th>
-                    <th class="author">Author<div class="resizer"></div></th>
-                    <th class="year">Year<div class="resizer"></div></th>
-                    <th class="findings">Findings<div class="resizer"></div></th>
-                    <th class="keywords">Keywords<div class="resizer"></div></th>
+                    <th>Filename<div class="resizer"></div></th>
+                    <th>Author<div class="resizer"></div></th>
+                    <th>Year<div class="resizer"></div></th>
+                    <th>Findings<div class="resizer"></div></th>
+                    <th>Keywords<div class="resizer"></div></th>
                 </tr>
             </thead>
             <tbody id="tableBody">
@@ -108,52 +46,35 @@
     </div>
 
     <script>
-        function parseCSV(str) {
-            var arr = [];
-            var quote = false;
-            var row = [];
-            var cell = "";
-
-            for (var c = 0; c < str.length; c++) {
-                var cc = str[c], nc = str[c+1];
-                if (cc == '"' && quote && nc == '"') { cell += cc; ++c; continue; }
-                if (cc == '"') { quote = !quote; continue; }
-                if (cc == ',' && !quote) {
-                    row.push(cell);
-                    cell = "";
-                    continue;
-                }
-                if (cc == '\r' && nc == '\n' && !quote) { row.push(cell); arr.push(row); row = []; cell = ''; c++; continue; }
-                if (cc == '\n' && !quote) { row.push(cell); arr.push(row); row = []; cell = ''; continue; }
-                if (cc == '\r' && !quote) { row.push(cell); arr.push(row); row = []; cell = ''; continue; }
-                cell += cc;
-            }
-            if (cell !== "") { row.push(cell); }
-            if (row.length > 0) { arr.push(row); }
-            return arr;
-        }
-
         function fetchCSV() {
             fetch('pdf_summaries.csv')
                 .then(response => response.text())
                 .then(data => {
-                    const rows = parseCSV(data).slice(1);  // Skip header row
+                    const rows = data.split('\n').slice(1);  // Skip header row
                     const tableBody = document.getElementById('tableBody');
                     
                     rows.forEach(row => {
-                        if (row.length === 5) {  // Ensure we have all 5 columns
-                            const [filename, author, year, findings, keywords] = row;
+                        if (row.trim() !== '') {  // Skip empty rows
+                            const [filename, author, year, findings, keywords] = row.split(',').map(item => item.trim());
                             const tr = document.createElement('tr');
                             tr.innerHTML = `
-                                <td class="filename"><a href="pdfs/${encodeURIComponent(filename)}">${filename}</a></td>
-                                <td class="author">${author}</td>
-                                <td class="year">${year}</td>
-                                <td class="findings">${findings}</td>
-                                <td class="keywords">${keywords}</td>
+                                <td><a href="pdfs/${encodeURIComponent(filename)}">${filename}</a></td>
+                                <td>${author}</td>
+                                <td>${year}</td>
+                                <td>${findings}</td>
+                                <td>${keywords}</td>
                             `;
                             tableBody.appendChild(tr);
                         }
                     });
+
+                    // Add click event to expand/collapse cells
+                    document.querySelectorAll('td').forEach(td => {
+                        td.addEventListener('click', function() {
+                            this.classList.toggle('expanded');
+                        });
+                    });
+
                     initResizers();
                 })
                 .catch(error => console.error('Error fetching CSV:', error));
@@ -163,30 +84,39 @@
             const table = document.getElementById('documentTable');
             const cols = table.querySelectorAll('th');
             
-            cols.forEach((col) => {
+            cols.forEach((col, index) => {
                 const resizer = col.querySelector('.resizer');
-                resizer.addEventListener('mousedown', function(e) {
-                    const startX = e.pageX;
-                    const startWidth = col.offsetWidth;
+                let x = 0;
+                let w = 0;
 
-                    function onMouseMove(e) {
-                        const width = startWidth + (e.pageX - startX);
-                        if (width > 50) {  // Minimum width
-                            col.style.width = width + 'px';
-                            const colIndex = Array.from(col.parentNode.children).indexOf(col);
-                            const cells = table.querySelectorAll(`td:nth-child(${colIndex + 1})`);
-                            cells.forEach(cell => cell.style.width = width + 'px');
-                        }
+                const mouseDownHandler = function(e) {
+                    x = e.clientX;
+                    const styles = window.getComputedStyle(col);
+                    w = parseInt(styles.width, 10);
+
+                    document.addEventListener('mousemove', mouseMoveHandler);
+                    document.addEventListener('mouseup', mouseUpHandler);
+
+                    resizer.classList.add('resizing');
+                };
+
+                const mouseMoveHandler = function(e) {
+                    const dx = e.clientX - x;
+                    const newWidth = w + dx;
+                    if (newWidth > 50) { // Minimum width
+                        col.style.width = `${newWidth}px`;
+                        const cells = table.querySelectorAll(`td:nth-child(${index + 1})`);
+                        cells.forEach(cell => cell.style.width = `${newWidth}px`);
                     }
+                };
 
-                    function onMouseUp() {
-                        document.removeEventListener('mousemove', onMouseMove);
-                        document.removeEventListener('mouseup', onMouseUp);
-                    }
+                const mouseUpHandler = function() {
+                    document.removeEventListener('mousemove', mouseMoveHandler);
+                    document.removeEventListener('mouseup', mouseUpHandler);
+                    resizer.classList.remove('resizing');
+                };
 
-                    document.addEventListener('mousemove', onMouseMove);
-                    document.addEventListener('mouseup', onMouseUp);
-                });
+                resizer.addEventListener('mousedown', mouseDownHandler);
             });
         }
 
