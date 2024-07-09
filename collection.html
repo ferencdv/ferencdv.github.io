@@ -32,6 +32,7 @@
             border-spacing: 0;
             background-color: white;
             box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+            table-layout: fixed;
         }
         th, td {
             padding: 15px;
@@ -80,24 +81,31 @@
         .resizer:hover, .resizing {
             border-right: 2px solid #0000ff;
         }
-        .filename { width: 20%; }
+        .filename { width: 25%; }
         .author { width: 15%; }
-        .year { width: 5%; }
-        .findings { width: 30%; }
-        .keywords { width: 30%; }
+        .year { width: 7%; }
+        .findings { width: 28%; }
+        .keywords { width: 25%; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>AI Negotiation Documents</h1>
         <table id="documentTable">
+            <colgroup>
+                <col class="filename">
+                <col class="author">
+                <col class="year">
+                <col class="findings">
+                <col class="keywords">
+            </colgroup>
             <thead>
                 <tr>
-                    <th class="filename">Filename<div class="resizer"></div></th>
-                    <th class="author">Author<div class="resizer"></div></th>
-                    <th class="year">Year<div class="resizer"></div></th>
-                    <th class="findings">Findings<div class="resizer"></div></th>
-                    <th class="keywords">Keywords<div class="resizer"></div></th>
+                    <th>Filename<div class="resizer"></div></th>
+                    <th>Author<div class="resizer"></div></th>
+                    <th>Year<div class="resizer"></div></th>
+                    <th>Findings<div class="resizer"></div></th>
+                    <th>Keywords<div class="resizer"></div></th>
                 </tr>
             </thead>
             <tbody id="tableBody">
@@ -144,11 +152,11 @@
                             const [filename, author, year, findings, keywords] = row;
                             const tr = document.createElement('tr');
                             tr.innerHTML = `
-                                <td class="filename"><a href="pdfs/${encodeURIComponent(filename)}">${filename}</a></td>
-                                <td class="author">${author}</td>
-                                <td class="year">${year}</td>
-                                <td class="findings">${findings}</td>
-                                <td class="keywords">${keywords}</td>
+                                <td><a href="pdfs/${encodeURIComponent(filename)}">${filename}</a></td>
+                                <td>${author}</td>
+                                <td>${year}</td>
+                                <td>${findings}</td>
+                                <td>${keywords}</td>
                             `;
                             tableBody.appendChild(tr);
                         }
@@ -162,13 +170,13 @@
             const table = document.getElementById('documentTable');
             const cols = table.querySelectorAll('th');
             
-            cols.forEach((col) => {
+            cols.forEach((col, index) => {
                 const resizer = col.querySelector('.resizer');
-                createResizableColumn(col, resizer);
+                createResizableColumn(col, resizer, index);
             });
         }
 
-        function createResizableColumn(col, resizer) {
+        function createResizableColumn(col, resizer, index) {
             let x = 0;
             let w = 0;
 
@@ -185,13 +193,18 @@
 
             const mouseMoveHandler = function(e) {
                 const dx = e.clientX - x;
-                col.style.width = `${w + dx}px`;
+                const newWidth = w + dx;
+                if (newWidth > 50) { // Minimum width
+                    col.style.width = `${newWidth}px`;
+                    document.querySelectorAll(`td:nth-child(${index + 1})`).forEach(td => {
+                        td.style.width = `${newWidth}px`;
+                    });
+                }
             };
 
             const mouseUpHandler = function() {
                 document.removeEventListener('mousemove', mouseMoveHandler);
                 document.removeEventListener('mouseup', mouseUpHandler);
-
                 resizer.classList.remove('resizing');
             };
 
