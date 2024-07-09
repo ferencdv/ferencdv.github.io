@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Negotiation Documents</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+            font-weight: 700;
+        }
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            background-color: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        th {
+            background-color: #3498db;
+            color: white;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+        a {
+            color: #3498db;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        a:hover {
+            color: #2980b9;
+            text-decoration: underline;
+        }
+        .findings, .keywords {
+            max-width: 200px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AI Negotiation Documents</h1>
+        <table id="documentTable">
+            <thead>
+                <tr>
+                    <th>Filename</th>
+                    <th>Author</th>
+                    <th>Year</th>
+                    <th>Findings</th>
+                    <th>Keywords</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                <!-- Table content will be dynamically inserted here -->
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        function fetchCSV() {
+            fetch('pdf_summaries.csv')
+                .then(response => response.text())
+                .then(data => {
+                    const rows = data.split('\n').slice(1);  // Skip header row
+                    const tableBody = document.getElementById('tableBody');
+                    
+                    rows.forEach(row => {
+                        if (row.trim() !== '') {  // Skip empty rows
+                            const [filename, author, year, findings, keywords] = row.split(',').map(item => item.trim());
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                                <td><a href="pdfs/${encodeURIComponent(filename)}">${filename}</a></td>
+                                <td>${author}</td>
+                                <td>${year}</td>
+                                <td class="findings" title="${findings}">${findings}</td>
+                                <td class="keywords" title="${keywords}">${keywords}</td>
+                            `;
+                            tableBody.appendChild(tr);
+                        }
+                    });
+                })
+                .catch(error => console.error('Error fetching CSV:', error));
+        }
+
+        document.addEventListener('DOMContentLoaded', fetchCSV);
+    </script>
+</body>
+</html>
