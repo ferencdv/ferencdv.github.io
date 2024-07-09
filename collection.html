@@ -107,7 +107,6 @@
     </div>
 
     <script>
-        // CSV parsing function that handles quoted fields
         function parseCSV(str) {
             var arr = [];
             var quote = false;
@@ -154,21 +153,16 @@
                             tableBody.appendChild(tr);
                         }
                     });
+                    initResizers();
                 })
                 .catch(error => console.error('Error fetching CSV:', error));
         }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            fetchCSV();
-            initResizers();
-        });
 
         function initResizers() {
             const table = document.getElementById('documentTable');
             const cols = table.querySelectorAll('th');
             
-            [].forEach.call(cols, function(col) {
-                // Add a resizer element to the column
+            cols.forEach((col) => {
                 const resizer = col.querySelector('.resizer');
                 createResizableColumn(col, resizer);
             });
@@ -203,6 +197,8 @@
 
             resizer.addEventListener('mousedown', mouseDownHandler);
         }
+
+        document.addEventListener('DOMContentLoaded', fetchCSV);
     </script>
 </body>
 </html>
