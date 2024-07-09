@@ -32,7 +32,6 @@
             border-spacing: 0;
             background-color: white;
             box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
-            table-layout: fixed;
         }
         th, td {
             padding: 15px;
@@ -72,14 +71,15 @@
         .resizer {
             position: absolute;
             top: 0;
-            right: 0;
-            width: 5px;
+            right: -3px;
+            width: 6px;
             cursor: col-resize;
             user-select: none;
             height: 100%;
+            z-index: 1;
         }
         .resizer:hover, .resizing {
-            border-right: 2px solid #0000ff;
+            background-color: #0000ff;
         }
         .filename { width: 25%; }
         .author { width: 15%; }
@@ -92,20 +92,13 @@
     <div class="container">
         <h1>AI Negotiation Documents</h1>
         <table id="documentTable">
-            <colgroup>
-                <col class="filename">
-                <col class="author">
-                <col class="year">
-                <col class="findings">
-                <col class="keywords">
-            </colgroup>
             <thead>
                 <tr>
-                    <th>Filename<div class="resizer"></div></th>
-                    <th>Author<div class="resizer"></div></th>
-                    <th>Year<div class="resizer"></div></th>
-                    <th>Findings<div class="resizer"></div></th>
-                    <th>Keywords<div class="resizer"></div></th>
+                    <th class="filename">Filename<div class="resizer"></div></th>
+                    <th class="author">Author<div class="resizer"></div></th>
+                    <th class="year">Year<div class="resizer"></div></th>
+                    <th class="findings">Findings<div class="resizer"></div></th>
+                    <th class="keywords">Keywords<div class="resizer"></div></th>
                 </tr>
             </thead>
             <tbody id="tableBody">
@@ -152,11 +145,11 @@
                             const [filename, author, year, findings, keywords] = row;
                             const tr = document.createElement('tr');
                             tr.innerHTML = `
-                                <td><a href="pdfs/${encodeURIComponent(filename)}">${filename}</a></td>
-                                <td>${author}</td>
-                                <td>${year}</td>
-                                <td>${findings}</td>
-                                <td>${keywords}</td>
+                                <td class="filename"><a href="pdfs/${encodeURIComponent(filename)}">${filename}</a></td>
+                                <td class="author">${author}</td>
+                                <td class="year">${year}</td>
+                                <td class="findings">${findings}</td>
+                                <td class="keywords">${keywords}</td>
                             `;
                             tableBody.appendChild(tr);
                         }
@@ -170,45 +163,31 @@
             const table = document.getElementById('documentTable');
             const cols = table.querySelectorAll('th');
             
-            cols.forEach((col, index) => {
+            cols.forEach((col) => {
                 const resizer = col.querySelector('.resizer');
-                createResizableColumn(col, resizer, index);
+                resizer.addEventListener('mousedown', function(e) {
+                    const startX = e.pageX;
+                    const startWidth = col.offsetWidth;
+
+                    function onMouseMove(e) {
+                        const width = startWidth + (e.pageX - startX);
+                        if (width > 50) {  // Minimum width
+                            col.style.width = width + 'px';
+                            const colIndex = Array.from(col.parentNode.children).indexOf(col);
+                            const cells = table.querySelectorAll(`td:nth-child(${colIndex + 1})`);
+                            cells.forEach(cell => cell.style.width = width + 'px');
+                        }
+                    }
+
+                    function onMouseUp() {
+                        document.removeEventListener('mousemove', onMouseMove);
+                        document.removeEventListener('mouseup', onMouseUp);
+                    }
+
+                    document.addEventListener('mousemove', onMouseMove);
+                    document.addEventListener('mouseup', onMouseUp);
+                });
             });
-        }
-
-        function createResizableColumn(col, resizer, index) {
-            let x = 0;
-            let w = 0;
-
-            const mouseDownHandler = function(e) {
-                x = e.clientX;
-                const styles = window.getComputedStyle(col);
-                w = parseInt(styles.width, 10);
-
-                document.addEventListener('mousemove', mouseMoveHandler);
-                document.addEventListener('mouseup', mouseUpHandler);
-
-                resizer.classList.add('resizing');
-            };
-
-            const mouseMoveHandler = function(e) {
-                const dx = e.clientX - x;
-                const newWidth = w + dx;
-                if (newWidth > 50) { // Minimum width
-                    col.style.width = `${newWidth}px`;
-                    document.querySelectorAll(`td:nth-child(${index + 1})`).forEach(td => {
-                        td.style.width = `${newWidth}px`;
-                    });
-                }
-            };
-
-            const mouseUpHandler = function() {
-                document.removeEventListener('mousemove', mouseMoveHandler);
-                document.removeEventListener('mouseup', mouseUpHandler);
-                resizer.classList.remove('resizing');
-            };
-
-            resizer.addEventListener('mousedown', mouseDownHandler);
         }
 
         document.addEventListener('DOMContentLoaded', fetchCSV);
