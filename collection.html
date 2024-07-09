@@ -38,9 +38,10 @@
             text-align: left;
             border-right: 1px solid #e0e0e0;
             border-bottom: 1px solid #e0e0e0;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            vertical-align: top;
+            position: relative;
         }
         th {
             background-color: #3498db;
@@ -80,10 +81,11 @@
         .resizer:hover, .resizing {
             border-right: 2px solid #0000ff;
         }
-        td.expanded {
-            white-space: normal;
-            word-wrap: break-word;
-        }
+        .filename { width: 20%; }
+        .author { width: 15%; }
+        .year { width: 5%; }
+        .findings { width: 30%; }
+        .keywords { width: 30%; }
     </style>
 </head>
 <body>
@@ -92,11 +94,11 @@
         <table id="documentTable">
             <thead>
                 <tr>
-                    <th>Filename<div class="resizer"></div></th>
-                    <th>Author<div class="resizer"></div></th>
-                    <th>Year<div class="resizer"></div></th>
-                    <th>Findings<div class="resizer"></div></th>
-                    <th>Keywords<div class="resizer"></div></th>
+                    <th class="filename">Filename<div class="resizer"></div></th>
+                    <th class="author">Author<div class="resizer"></div></th>
+                    <th class="year">Year<div class="resizer"></div></th>
+                    <th class="findings">Findings<div class="resizer"></div></th>
+                    <th class="keywords">Keywords<div class="resizer"></div></th>
                 </tr>
             </thead>
             <tbody id="tableBody">
@@ -106,33 +108,52 @@
     </div>
 
     <script>
+        // CSV parsing function that handles quoted fields
+        function parseCSV(str) {
+            var arr = [];
+            var quote = false;
+            var row = [];
+            var cell = "";
+
+            for (var c = 0; c < str.length; c++) {
+                var cc = str[c], nc = str[c+1];
+                if (cc == '"' && quote && nc == '"') { cell += cc; ++c; continue; }
+                if (cc == '"') { quote = !quote; continue; }
+                if (cc == ',' && !quote) {
+                    row.push(cell);
+                    cell = "";
+                    continue;
+                }
+                if (cc == '\r' && nc == '\n' && !quote) { row.push(cell); arr.push(row); row = []; cell = ''; c++; continue; }
+                if (cc == '\n' && !quote) { row.push(cell); arr.push(row); row = []; cell = ''; continue; }
+                if (cc == '\r' && !quote) { row.push(cell); arr.push(row); row = []; cell = ''; continue; }
+                cell += cc;
+            }
+            if (cell !== "") { row.push(cell); }
+            if (row.length > 0) { arr.push(row); }
+            return arr;
+        }
+
         function fetchCSV() {
             fetch('pdf_summaries.csv')
                 .then(response => response.text())
                 .then(data => {
-                    const rows = data.split('\n').slice(1);  // Skip header row
+                    const rows = parseCSV(data).slice(1);  // Skip header row
                     const tableBody = document.getElementById('tableBody');
                     
                     rows.forEach(row => {
-                        if (row.trim() !== '') {  // Skip empty rows
-                            const [filename, author, year, findings, keywords] = row.split(',').map(item => item.trim());
+                        if (row.length === 5) {  // Ensure we have all 5 columns
+                            const [filename, author, year, findings, keywords] = row;
                             const tr = document.createElement('tr');
                             tr.innerHTML = `
-                                <td><a href="pdfs/${encodeURIComponent(filename)}">${filename}</a></td>
-                                <td>${author}</td>
-                                <td>${year}</td>
-                                <td>${findings}</td>
-                                <td>${keywords}</td>
+                                <td class="filename"><a href="pdfs/${encodeURIComponent(filename)}">${filename}</a></td>
+                                <td class="author">${author}</td>
+                                <td class="year">${year}</td>
+                                <td class="findings">${findings}</td>
+                                <td class="keywords">${keywords}</td>
                             `;
                             tableBody.appendChild(tr);
                         }
-                    });
-
-                    // Add click event to expand/collapse cells
-                    document.querySelectorAll('td').forEach(td => {
-                        td.addEventListener('click', function() {
-                            this.classList.toggle('expanded');
-                        });
                     });
                 })
                 .catch(error => console.error('Error fetching CSV:', error));
@@ -148,40 +169,40 @@
             const cols = table.querySelectorAll('th');
             
             [].forEach.call(cols, function(col) {
+                // Add a resizer element to the column
                 const resizer = col.querySelector('.resizer');
-                let x = 0;
-                let w = 0;
-
-                const mouseDownHandler = function(e) {
-                    x = e.clientX;
-                    const styles = window.getComputedStyle(col);
-                    w = parseInt(styles.width, 10);
-
-                    document.addEventListener('mousemove', mouseMoveHandler);
-                    document.addEventListener('mouseup', mouseUpHandler);
-
-                    resizer.classList.add('resizing');
-                };
-
-                const mouseMoveHandler = function(e) {
-                    const dx = e.clientX - x;
-                    const newWidth = w + dx;
-                    if (newWidth > 50) { // Minimum width
-                        col.style.width = `${newWidth}px`;
-                        const index = Array.from(col.parentNode.children).indexOf(col);
-                        const cells = table.querySelectorAll(`td:nth-child(${index + 1})`);
-                        cells.forEach(cell => cell.style.width = `${newWidth}px`);
-                    }
-                };
-
-                const mouseUpHandler = function() {
-                    document.removeEventListener('mousemove', mouseMoveHandler);
-                    document.removeEventListener('mouseup', mouseUpHandler);
-                    resizer.classList.remove('resizing');
-                };
-
-                resizer.addEventListener('mousedown', mouseDownHandler);
+                createResizableColumn(col, resizer);
             });
+        }
+
+        function createResizableColumn(col, resizer) {
+            let x = 0;
+            let w = 0;
+
+            const mouseDownHandler = function(e) {
+                x = e.clientX;
+                const styles = window.getComputedStyle(col);
+                w = parseInt(styles.width, 10);
+
+                document.addEventListener('mousemove', mouseMoveHandler);
+                document.addEventListener('mouseup', mouseUpHandler);
+
+                resizer.classList.add('resizing');
+            };
+
+            const mouseMoveHandler = function(e) {
+                const dx = e.clientX - x;
+                col.style.width = `${w + dx}px`;
+            };
+
+            const mouseUpHandler = function() {
+                document.removeEventListener('mousemove', mouseMoveHandler);
+                document.removeEventListener('mouseup', mouseUpHandler);
+
+                resizer.classList.remove('resizing');
+            };
+
+            resizer.addEventListener('mousedown', mouseDownHandler);
         }
     </script>
 </body>
