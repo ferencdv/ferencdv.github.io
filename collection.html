@@ -146,7 +146,7 @@
                             const [filename, author, year, findings, keywords] = row;
                             const tr = document.createElement('tr');
                             tr.innerHTML = `
-                                <td class="filename"><a href="pdfs/${encodeURIComponent(filename)}">${filename}</a></td>
+                                <td class="filename"><a href="pdfs/${encodeURIComponent(filename.trim())}">${filename}</a></td>
                                 <td class="author">${author}</td>
                                 <td class="year">${year}</td>
                                 <td class="findings">${findings}</td>
