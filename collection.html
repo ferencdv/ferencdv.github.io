@@ -18,6 +18,7 @@
             max-width: 95%;
             margin: 0 auto;
             padding: 20px;
+            overflow-x: auto;
         }
         h1 {
             text-align: center;
@@ -31,15 +32,16 @@
             border-spacing: 0;
             background-color: white;
             box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
-            border-radius: 8px;
-            overflow: hidden;
+            table-layout: fixed;
         }
         th, td {
             padding: 15px;
             text-align: left;
+            border-right: 1px solid #e0e0e0;
             border-bottom: 1px solid #e0e0e0;
-            word-wrap: break-word;
-            max-width: 300px; /* Adjust as needed */
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
         th {
             background-color: #3498db;
@@ -47,6 +49,10 @@
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            position: relative;
+        }
+        th:last-child, td:last-child {
+            border-right: none;
         }
         tr:nth-child(even) {
             background-color: #f9f9f9;
@@ -63,11 +69,22 @@
             color: #2980b9;
             text-decoration: underline;
         }
-        .filename { width: 20%; }
-        .author { width: 15%; }
-        .year { width: 5%; }
-        .findings { width: 30%; }
-        .keywords { width: 30%; }
+        .resizer {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 5px;
+            cursor: col-resize;
+            user-select: none;
+            height: 100%;
+        }
+        .resizer:hover, .resizing {
+            border-right: 2px solid #0000ff;
+        }
+        td.expanded {
+            white-space: normal;
+            word-wrap: break-word;
+        }
     </style>
 </head>
 <body>
@@ -76,11 +93,11 @@
         <table id="documentTable">
             <thead>
                 <tr>
-                    <th class="filename">Filename</th>
-                    <th class="author">Author</th>
-                    <th class="year">Year</th>
-                    <th class="findings">Findings</th>
-                    <th class="keywords">Keywords</th>
+                    <th>Filename<div class="resizer"></div></th>
+                    <th>Author<div class="resizer"></div></th>
+                    <th>Year<div class="resizer"></div></th>
+                    <th>Findings<div class="resizer"></div></th>
+                    <th>Keywords<div class="resizer"></div></th>
                 </tr>
             </thead>
             <tbody id="tableBody">
@@ -102,20 +119,71 @@
                             const [filename, author, year, findings, keywords] = row.split(',').map(item => item.trim());
                             const tr = document.createElement('tr');
                             tr.innerHTML = `
-                                <td class="filename"><a href="pdfs/${encodeURIComponent(filename)}">${filename}</a></td>
-                                <td class="author">${author}</td>
-                                <td class="year">${year}</td>
-                                <td class="findings">${findings}</td>
-                                <td class="keywords">${keywords}</td>
+                                <td><a href="pdfs/${encodeURIComponent(filename)}">${filename}</a></td>
+                                <td>${author}</td>
+                                <td>${year}</td>
+                                <td>${findings}</td>
+                                <td>${keywords}</td>
                             `;
                             tableBody.appendChild(tr);
                         }
+                    });
+
+                    // Add click event to expand/collapse cells
+                    document.querySelectorAll('td').forEach(td => {
+                        td.addEventListener('click', function() {
+                            this.classList.toggle('expanded');
+                        });
                     });
                 })
                 .catch(error => console.error('Error fetching CSV:', error));
         }
 
-        document.addEventListener('DOMContentLoaded', fetchCSV);
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchCSV();
+            initResizers();
+        });
+
+        function initResizers() {
+            const table = document.getElementById('documentTable');
+            const cols = table.querySelectorAll('th');
+            
+            [].forEach.call(cols, function(col) {
+                // Add a resizer element to the column
+                const resizer = col.querySelector('.resizer');
+                createResizableColumn(col, resizer);
+            });
+        }
+
+        function createResizableColumn(col, resizer) {
+            let x = 0;
+            let w = 0;
+
+            const mouseDownHandler = function(e) {
+                x = e.clientX;
+                const styles = window.getComputedStyle(col);
+                w = parseInt(styles.width, 10);
+
+                document.addEventListener('mousemove', mouseMoveHandler);
+                document.addEventListener('mouseup', mouseUpHandler);
+
+                resizer.classList.add('resizing');
+            };
+
+            const mouseMoveHandler = function(e) {
+                const dx = e.clientX - x;
+                col.style.width = `${w + dx}px`;
+            };
+
+            const mouseUpHandler = function() {
+                document.removeEventListener('mousemove', mouseMoveHandler);
+                document.removeEventListener('mouseup', mouseUpHandler);
+
+                resizer.classList.remove('resizing');
+            };
+
+            resizer.addEventListener('mousedown', mouseDownHandler);
+        }
     </script>
 </body>
 </html>
