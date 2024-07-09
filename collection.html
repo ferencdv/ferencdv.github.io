@@ -15,7 +15,7 @@
             color: #333;
         }
         .container {
-            max-width: 1200px;
+            max-width: 95%;
             margin: 0 auto;
             padding: 20px;
         }
@@ -38,6 +38,8 @@
             padding: 15px;
             text-align: left;
             border-bottom: 1px solid #e0e0e0;
+            word-wrap: break-word;
+            max-width: 300px; /* Adjust as needed */
         }
         th {
             background-color: #3498db;
@@ -61,12 +63,11 @@
             color: #2980b9;
             text-decoration: underline;
         }
-        .findings, .keywords {
-            max-width: 200px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
+        .filename { width: 20%; }
+        .author { width: 15%; }
+        .year { width: 5%; }
+        .findings { width: 30%; }
+        .keywords { width: 30%; }
     </style>
 </head>
 <body>
@@ -75,11 +76,11 @@
         <table id="documentTable">
             <thead>
                 <tr>
-                    <th>Filename</th>
-                    <th>Author</th>
-                    <th>Year</th>
-                    <th>Findings</th>
-                    <th>Keywords</th>
+                    <th class="filename">Filename</th>
+                    <th class="author">Author</th>
+                    <th class="year">Year</th>
+                    <th class="findings">Findings</th>
+                    <th class="keywords">Keywords</th>
                 </tr>
             </thead>
             <tbody id="tableBody">
@@ -101,11 +102,11 @@
                             const [filename, author, year, findings, keywords] = row.split(',').map(item => item.trim());
                             const tr = document.createElement('tr');
                             tr.innerHTML = `
-                                <td><a href="pdfs/${encodeURIComponent(filename)}">${filename}</a></td>
-                                <td>${author}</td>
-                                <td>${year}</td>
-                                <td class="findings" title="${findings}">${findings}</td>
-                                <td class="keywords" title="${keywords}">${keywords}</td>
+                                <td class="filename"><a href="pdfs/${encodeURIComponent(filename)}">${filename}</a></td>
+                                <td class="author">${author}</td>
+                                <td class="year">${year}</td>
+                                <td class="findings">${findings}</td>
+                                <td class="keywords">${keywords}</td>
                             `;
                             tableBody.appendChild(tr);
                         }
