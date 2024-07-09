@@ -6,19 +6,79 @@
     <title>AI Negotiation Documents</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
-        /* ... (keep the existing styles) ... */
+        body {
+            font-family: 'Roboto', sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 95%;
+            margin: 0 auto;
+            padding: 20px;
+            overflow-x: auto;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+            font-weight: 700;
+        }
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            background-color: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+        }
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-right: 1px solid #e0e0e0;
+            border-bottom: 1px solid #e0e0e0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        th {
+            background-color: #3498db;
+            color: white;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            position: relative;
+        }
+        th:last-child, td:last-child {
+            border-right: none;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+        a {
+            color: #3498db;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        a:hover {
+            color: #2980b9;
+            text-decoration: underline;
+        }
         .resizer {
             position: absolute;
             top: 0;
-            right: -3px;
-            width: 6px;
+            right: 0;
+            width: 5px;
             cursor: col-resize;
             user-select: none;
             height: 100%;
-            z-index: 1;
         }
         .resizer:hover, .resizing {
-            background-color: #0000ff;
+            border-right: 2px solid #0000ff;
         }
         td.expanded {
             white-space: normal;
@@ -74,17 +134,20 @@
                             this.classList.toggle('expanded');
                         });
                     });
-
-                    initResizers();
                 })
                 .catch(error => console.error('Error fetching CSV:', error));
         }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchCSV();
+            initResizers();
+        });
 
         function initResizers() {
             const table = document.getElementById('documentTable');
             const cols = table.querySelectorAll('th');
             
-            cols.forEach((col, index) => {
+            [].forEach.call(cols, function(col) {
                 const resizer = col.querySelector('.resizer');
                 let x = 0;
                 let w = 0;
@@ -105,6 +168,7 @@
                     const newWidth = w + dx;
                     if (newWidth > 50) { // Minimum width
                         col.style.width = `${newWidth}px`;
+                        const index = Array.from(col.parentNode.children).indexOf(col);
                         const cells = table.querySelectorAll(`td:nth-child(${index + 1})`);
                         cells.forEach(cell => cell.style.width = `${newWidth}px`);
                     }
@@ -119,8 +183,6 @@
                 resizer.addEventListener('mousedown', mouseDownHandler);
             });
         }
-
-        document.addEventListener('DOMContentLoaded', fetchCSV);
     </script>
 </body>
 </html>
