@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Pac-Man Multiplication Game</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background-color: #000;
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        #game-container {
+            text-align: center;
+            position: relative;
+        }
+        canvas {
+            border: 4px solid #00f;
+            background-color: #000;
+        }
+        button {
+            margin: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #00f;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            font-family: 'Press Start 2P', cursive;
+        }
+        #score, #base-number, #mode-indicator {
+            font-size: 20px;
+            margin: 10px 0;
+        }
+        #speed-control {
+            margin: 10px 0;
+        }
+        #mobile-controls {
+            display: none;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .control-btn {
+            width: 60px;
+            height: 60px;
+            font-size: 24px;
+            margin: 5px;
+        }
+        @media (max-width: 768px) {
+            #mobile-controls {
+                display: flex;
+            }
+        }
+        @keyframes flash {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        .flashing {
+            animation: flash 0.5s infinite;
+        }
+        #full-screen-message {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 36px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            z-index: 10;
+            display: none;
+            transition: opacity 1s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <h1>Enhanced Pac-Man Multiplication Game</h1>
+        <canvas id="gameCanvas" width="400" height="400"></canvas>
+        <div id="score">Score: 0</div>
+        <div id="base-number">Base Number: 5</div>
+        <div id="mode-indicator"></div>
+        <button id="start-button">Start Game</button>
+        <button id="change-boxes">Change Boxes: 3</button>
+        <div id="speed-control">
+            <label for="speed-slider">Pacman Speed:</label>
+            <input type="range" id="speed-slider" min="1" max="10" value="5">
+        </div>
+        <div id="mobile-controls">
+            <button class="control-btn" id="up">↑</button>
+            <button class="control-btn" id="left">←</button>
+            <button class="control-btn" id="right">→</button>
+            <button class="control-btn" id="down">↓</button>
+        </div>
+        <div id="full-screen-message"></div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const startButton = document.getElementById('start-button');
+        const changeBoxesButton = document.getElementById('change-boxes');
+        const scoreElement = document.getElementById('score');
+        const baseNumberElement = document.getElementById('base-number');
+        const modeIndicatorElement = document.getElementById('mode-indicator');
+        const speedSlider = document.getElementById('speed-slider');
+        const fullScreenMessage = document.getElementById('full-screen-message');
+
+        const gridSize = 40;
+        const tileCount = canvas.width / gridSize;
+
+        let pacman = { x: 5, y: 5, size: 1 };
+        let foods = [];
+        let ghosts = [];
+        let dx = 1;
+        let dy = 0;
+        let score = 0;
+        let baseNumber = 5;
+        let gameLoop;
+        let gameSpeed = 150;
+        let numBoxes = 3;
+        let particles = [];
+        let isChaseMode = false;
+        let isDoublePoints = false;
+        let gameTime = 0;
+        let chaseTimeout;
+        let doublePointsTimeout;
+        let isGameOver = false;
+
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        let continuousSound;
+
+        function playRetroSound(type, duration = 0.1) {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            const filterNode = audioContext.createBiquadFilter();
+
+            oscillator.connect(filterNode);
+            filterNode.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            filterNode.type = 'lowpass';
+            filterNode.frequency.setValueAtTime(1000, audioContext.currentTime);
+
+            switch(type) {
+                case 'eat':
+                    oscillator.type = 'triangle';
+                    oscillator.frequency.setValueAtTime(440, audioContext.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(880, audioContext.currentTime + 0.1);
+                    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                    break;
+                case 'wrong':
+                    oscillator.type = 'sawtooth';
+                    oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(100, audioContext.currentTime + 0.2);
+                    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                    gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.2);
+                    filterNode.frequency.setValueAtTime(500, audioContext.currentTime);
+                    break;
+                case 'levelUp':
+                    oscillator.type = 'square';
+                    for (let i = 0; i < 3; i++) {
+                        oscillator.frequency.setValueAtTime(330 + i * 110, audioContext.currentTime + i * 0.1);
+                        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime + i * 0.1);
+                        gainNode.gain.setValueAtTime(0, audioContext.currentTime + i * 0.1 + 0.08);
+                    }
+                    break;
+                case 'gameStart':
+                    oscillator.type = 'sawtooth';
+                    oscillator.frequency.setValueAtTime(261.63, audioContext.currentTime);
+                    oscillator.frequency.setValueAtTime(329.63, audioContext.currentTime + 0.1);
+                    oscillator.frequency.setValueAtTime(392, audioContext.currentTime + 0.2);
+                    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                    gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.3);
+                    filterNode.frequency.setValueAtTime(2000, audioContext.currentTime);
+                    filterNode.frequency.exponentialRampToValueAtTime(500, audioContext.currentTime + 0.3);
+                    break;
+                case 'ghost':
+                    oscillator.type = 'sine';
+                    oscillator.frequency.setValueAtTime(100, audioContext.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(50, audioContext.currentTime + 0.2);
+                    gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+                    break;
+                case 'chaseMode':
+                    oscillator.type = 'square';
+                    for (let i = 0; i < 4; i++) {
+                        oscillator.frequency.setValueAtTime(440 * Math.pow(2, i/12), audioContext.currentTime + i * 0.1);
+                        gainNode.gain.setValueAtTime(0.2, audioContext.currentTime + i * 0.1);
+                        gainNode.gain.setValueAtTime(0, audioContext.currentTime + i * 0.1 + 0.08);
+                    }
+                    break;
+                case 'doublePoints':
+                    oscillator.type = 'triangle';
+                    oscillator.frequency.setValueAtTime(440, audioContext.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(880, audioContext.currentTime + 0.1);
+                    oscillator.frequency.exponentialRampToValueAtTime(440, audioContext.currentTime + 0.2);
+                    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                    gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.2);
+                    break;
+                case 'gameOver':
+                    oscillator.type = 'sawtooth';
+                    oscillator.frequency.setValueAtTime(440, audioContext.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(220, audioContext.currentTime + 0.2);
+                    oscillator.frequency.exponentialRampToValueAtTime(110, audioContext.currentTime + 0.4);
+                    gainNode.gain.setValueAtTime(0.4, audioContext.currentTime);
+                    gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.6);
+                    filterNode.frequency.setValueAtTime(1000, audioContext.currentTime);
+                    filterNode.frequency.exponentialRampToValueAtTime(100, audioContext.currentTime + 0.6);
+                    break;
+                case 'explosion':
+                    oscillator.type = 'sawtooth';
+                    oscillator.frequency.setValueAtTime(100, audioContext.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(50, audioContext.currentTime + 0.1);
+                    gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                    filterNode.frequency.setValueAtTime(1000, audioContext.currentTime);
+                    filterNode.frequency.exponentialRampToValueAtTime(100, audioContext.currentTime + 0.3);
+                    duration = 0.3;
+                    break;
+            }
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + duration);
+
+            return { oscillator, gainNode };
+        }
+
+        function startContinuousSound(type) {
+            if (continuousSound) {
+                stopContinuousSound();
+            }
+            continuousSound = setInterval(() => {
+                playRetroSound(type, 0.5);
+            }, 500);
+        }
+
+        function stopContinuousSound() {
+            if (continuousSound) {
+                clearInterval(continuousSound);
+                continuousSound = null;
+            }
+        }
+
+        function drawGame() {
+            if (isGameOver) return;
+
+            clearCanvas();
+            movePacman();
+            moveGhosts();
+            moveFoods();
+            drawFoods();
+            drawGhosts();
+            drawPacman();
+            updateParticles();
+            drawParticles();
+            checkCollision();
+            updateScore();
+            gameTime += gameSpeed / 1000;
+            checkGameModes();
+        }
+
+        function clearCanvas() {
+            ctx.fillStyle = 'black';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function movePacman() {
+            const speed = speedSlider.value / 10;
+            pacman.x = (pacman.x + dx * speed + tileCount) % tileCount;
+            pacman.y = (pacman.y + dy * speed + tileCount) % tileCount;
+        }
+
+        function moveGhosts() {
+            ghosts.forEach(ghost => {
+                const dx = pacman.x - ghost.x;
+                const dy = pacman.y - ghost.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (isChaseMode) {
+                    // Ghosts move faster and directly towards Pacman during chase mode
+                    ghost.x += (dx / distance) * ghost.speed * 3;
+                    ghost.y += (dy / distance) * ghost.speed * 3;
+                } else {
+                    // Normal movement with some randomness
+                    ghost.x += (dx / distance + (Math.random() - 0.5) * 0.5) * ghost.speed;
+                    ghost.y += (dy / distance + (Math.random() - 0.5) * 0.5) * ghost.speed;
+                }
+
+                ghost.x = (ghost.x + tileCount) % tileCount;
+                ghost.y = (ghost.y + tileCount) % tileCount;
+            });
+        }
+
+        function moveFoods() {
+            foods.forEach(food => {
+                food.x += food.dx;
+                food.y += food.dy;
+
+                if (food.x < 0 || food.x >= tileCount) food.dx = -food.dx;
+                if (food.y < 0 || food.y >= tileCount) food.dy = -food.dy;
+
+                food.x = (food.x + tileCount) % tileCount;
+                food.y = (food.y + tileCount) % tileCount;
+            });
+        }
+
+        function drawPacman() {
+            ctx.fillStyle = 'yellow';
+            ctx.beginPath();
+            const mouthAngle = 0.2 * Math.PI;
+            const angle = Math.atan2(dy, dx);
+            ctx.arc(pacman.x * gridSize + gridSize / 2, pacman.y * gridSize + gridSize / 2, 
+                gridSize / 2, angle + mouthAngle, angle + 2 * Math.PI - mouthAngle);
+            ctx.lineTo(pacman.x * gridSize + gridSize / 2, pacman.y * gridSize + gridSize / 2);
+            ctx.fill();
+
+            ctx.fillStyle = 'black';
+     
+            ctx.font = 'bold 24px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(pacman.size.toString(), pacman.x * gridSize + gridSize / 2, pacman.y * gridSize + gridSize / 2);
+        }
+
+        function drawFoods() {
+            foods.forEach(food => {
+                ctx.fillStyle = food.color;
+                ctx.beginPath();
+                ctx.arc(food.x * gridSize + gridSize / 2, food.y * gridSize + gridSize / 2, 
+                    gridSize / 2 - 2, 0, 2 * Math.PI);
+                ctx.fill();
+
+                ctx.fillStyle = 'black';
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(food.value.toString(), food.x * gridSize + gridSize / 2, food.y * gridSize + gridSize / 2);
+            });
+        }
+
+        function drawGhosts() {
+            ghosts.forEach(ghost => {
+                drawGhost(ghost.x * gridSize + gridSize / 2, ghost.y * gridSize + gridSize / 2, gridSize / 2);
+            });
+        }
+
+        function drawGhost(x, y, radius) {
+            ctx.fillStyle = isChaseMode ? 'red' : 'white';
+            ctx.beginPath();
+            ctx.arc(x, y, radius, Math.PI, 0, false);
+            ctx.moveTo(x - radius, y);
+            
+            // Draw the wavy bottom
+            for(let i = 0; i < 3; i++) {
+                const curve = i % 2 === 0 ? radius * 0.4 : -radius * 0.4;
+                ctx.quadraticCurveTo(
+                    x - radius + (i + 0.5) * (radius / 1.5), 
+                    y + curve, 
+                    x - radius + (i + 1) * (radius / 1.5), 
+                    y
+                );
+            }
+            
+            ctx.lineTo(x - radius, y);
+            ctx.fill();
+
+            // Draw scary eyes
+            ctx.fillStyle = 'red';
+            ctx.beginPath();
+            ctx.arc(x - radius / 2, y - radius / 3, radius / 4, 0, Math.PI * 2);
+            ctx.arc(x + radius / 2, y - radius / 3, radius / 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Draw angry eyebrows
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x - radius * 0.7, y - radius * 0.5);
+            ctx.lineTo(x - radius * 0.3, y - radius * 0.7);
+            ctx.moveTo(x + radius * 0.7, y - radius * 0.5);
+            ctx.lineTo(x + radius * 0.3, y - radius * 0.7);
+            ctx.stroke();
+        }
+
+        function generateFoods() {
+            foods = [];
+            const correctValue = baseNumber * pacman.size;
+            const correctFood = createFood(correctValue, true);
+            foods.push(correctFood);
+
+            for (let i = 1; i < numBoxes; i++) {
+                let incorrectValue;
+                do {
+                    incorrectValue = baseNumber * (pacman.size + Math.floor(Math.random() * 5) - 2);
+                } while (incorrectValue === correctValue || incorrectValue <= 0);
+
+                foods.push(createFood(incorrectValue, false));
+            }
+        }
+
+        function createFood(value, isCorrect) {
+            return {
+                x: Math.random() * tileCount,
+                y: Math.random() * tileCount,
+                dx: (Math.random() - 0.5) * 0.02,
+                dy: (Math.random() - 0.5) * 0.02,
+                value: value,
+                isCorrect: isCorrect,
+                color: getRandomColor()
+            };
+        }
+
+        function createGhosts() {
+            ghosts = [];
+            for (let i = 0; i < 3; i++) {
+                ghosts.push({
+                    x: Math.random() * tileCount,
+                    y: Math.random() * tileCount,
+                    speed: 0.02 + Math.random() * 0.01
+                });
+            }
+        }
+
+        function getRandomColor() {
+            const r = Math.floor(Math.random() * 200 + 55);
+            const g = Math.floor(Math.random() * 200 + 55);
+            const b = Math.floor(Math.random() * 200 + 55);
+            return `rgb(${r},${g},${b})`;
+        }
+
+        function checkCollision() {
+            foods.forEach((food, index) => {
+                if (Math.abs(pacman.x - food.x) < 0.5 && Math.abs(pacman.y - food.y) < 0.5) {
+                    if (food.isCorrect) {
+                        playRetroSound('eat');
+                        score += isDoublePoints ? 2 : 1;
+                        pacman.size++;
+                        generateFoods();
+                        showAwesome();
+                        createFireworks(pacman.x * gridSize, pacman.y * gridSize);
+                    } else {
+                        playRetroSound('wrong');
+                        score = Math.max(0, score - 1);
+                        setTimeout(() => {
+                            generateFoods();
+                        }, 1000);
+                    }
+                }
+            });
+
+            ghosts.forEach(ghost => {
+                if (Math.abs(pacman.x - ghost.x) < 0.5 && Math.abs(pacman.y - ghost.y) < 0.5) {
+                    if (isChaseMode) {
+                        playRetroSound('explosion');
+                        createExplosion(ghost.x * gridSize, ghost.y * gridSize);
+                        resetGhost(ghost);
+                    } else {
+                        playRetroSound('ghost');
+                        playRetroSound('wrong');
+                        score = Math.max(0, score - 1);
+                        updateScore();
+                    }
+                }
+            });
+        }
+
+        function resetGhost(ghost) {
+            ghost.x = Math.random() * tileCount;
+            ghost.y = Math.random() * tileCount;
+        }
+
+        function gameOver() {
+            isGameOver = true;
+            clearInterval(gameLoop);
+            clearTimeout(chaseTimeout);
+            clearTimeout(doublePointsTimeout);
+            stopContinuousSound();
+            playRetroSound('gameOver', 0.6);
+            showFullScreenMessage('GAME OVER!');
+            startButton.disabled = false;
+        }
+
+        function showFullScreenMessage(message) {
+            fullScreenMessage.textContent = message;
+            fullScreenMessage.style.display = 'flex';
+            fullScreenMessage.style.opacity = 1;
+            setTimeout(() => {
+                fullScreenMessage.style.opacity = 0;
+                setTimeout(() => {
+                    fullScreenMessage.style.display = 'none';
+                }, 1000);
+            }, 2000);
+        }
+
+        function updateScore() {
+            scoreElement.textContent = `Score: ${score}`;
+            celebrateScore();
+        }
+
+        function changeDirection(e) {
+            const key = e.key || e;
+            if (key === 'ArrowUp' && dy === 0) { dx = 0; dy = -1; }
+            if (key === 'ArrowDown' && dy === 0) { dx = 0; dy = 1; }
+            if (key === 'ArrowLeft' && dx === 0) { dx = -1; dy = 0; }
+            if (key === 'ArrowRight' && dx === 0) { dx = 1; dy = 0; }
+        }
+
+        function startGame() {
+            playRetroSound('gameStart');
+            pacman = { x: 5, y: 5, size: 1 };
+            dx = 1;
+            dy = 0;
+            score = 0;
+            gameTime = 0;
+            isChaseMode = false;
+            isDoublePoints = false;
+            isGameOver = false;
+            baseNumber = Math.floor(Math.random() * 5) + 2; // Random base number between 2 and 6
+            baseNumberElement.textContent = `Base Number: ${baseNumber}`;
+            generateFoods();
+            createGhosts();
+            clearInterval(gameLoop);
+            gameLoop = setInterval(drawGame, gameSpeed);
+            startButton.disabled = true;
+            startGameModes();
+            fullScreenMessage.style.display = 'none';
+        }
+
+        function changeBoxes() {
+            numBoxes = (numBoxes % 5) + 3;
+            changeBoxesButton.textContent = `Change Boxes: ${numBoxes}`;
+            generateFoods();
+        }
+
+        function showAwesome() {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = 'red';
+            ctx.font = 'bold 48px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('AWESOME!', canvas.width / 2, canvas.height / 2);
+            playRetroSound('levelUp');
+            setTimeout(() => {
+                clearCanvas();
+                drawGame();
+            }, 1000);
+        }
+
+        function createFireworks(x, y) {
+            for (let i = 0; i < 50; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: Math.random() * 10 - 5,
+                    vy: Math.random() * 10 - 5,
+                    radius: Math.random() * 3 + 1,
+                    color: getRandomColor(),
+                    life: 100
+                });
+            }
+        }
+
+        function createExplosion(x, y) {
+            for (let i = 0; i < 50; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: Math.random() * 10 - 5,
+                    vy: Math.random() * 10 - 5,
+                    radius: Math.random() * 5 + 2,
+                    color: ['red', 'orange', 'yellow'][Math.floor(Math.random() * 3)],
+                    life: 100
+                });
+            }
+        }
+
+        function createBalloons(x, y) {
+            for (let i = 0; i < 10; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: Math.random() * 2 - 1,
+                    vy: -Math.random() * 2 - 1,
+                    radius: Math.random() * 20 + 10,
+                    color: getRandomColor(),
+                    life: 200,
+                    type: 'balloon'
+                });
+            }
+        }
+
+        function updateParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life--;
+
+                if (p.type === 'balloon') {
+                    p.vy += 0.01;  // Slight gravity for balloons
+                }
+
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+        }
+
+        function drawParticles() {
+            particles.forEach(p => {
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                if (p.type === 'balloon') {
+                    ctx.moveTo(p.x, p.y + p.radius);
+                    ctx.quadraticCurveTo(p.x + p.radius, p.y + p.radius, p.x + p.radius, p.y);
+                    ctx.quadraticCurveTo(p.x + p.radius, p.y - p.radius, p.x, p.y - p.radius);
+                    ctx.quadraticCurveTo(p.x - p.radius, p.y - p.radius, p.x - p.radius, p.y);
+                    ctx.quadraticCurveTo(p.x - p.radius, p.y + p.radius, p.x, p.y + p.radius);
+                } else {
+                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                }
+                ctx.fill();
+            });
+        }
+
+        function celebrateScore() {
+            if (score > 0 && score % 5 === 0) {
+                createBalloons(Math.random() * canvas.width, canvas.height);
+                playRetroSound('levelUp');
+            }
+        }
+
+        function startGameModes() {
+            clearTimeout(chaseTimeout);
+            clearTimeout(doublePointsTimeout);
+
+            function startChaseMode() {
+                if (!isDoublePoints) {
+                    isChaseMode = true;
+                    playRetroSound('chaseMode');
+                    showFullScreenMessage('CHASE MODE!');
+                    chaseTimeout = setTimeout(() => {
+                        isChaseMode = false;
+                        setTimeout(startChaseMode, Math.random() * 20000 + 10000);
+                    }, 5000);
+                } else {
+                    setTimeout(startChaseMode, 5000);
+                }
+            }
+
+            function startDoublePoints() {
+                if (!isChaseMode) {
+                    isDoublePoints = true;
+                    playRetroSound('doublePoints');
+                    showFullScreenMessage('DOUBLE POINTS!');
+                    doublePointsTimeout = setTimeout(() => {
+                        isDoublePoints = false;
+                        setTimeout(startDoublePoints, Math.random() * 20000 + 10000);
+                    }, 5000);
+                } else {
+                    setTimeout(startDoublePoints, 5000);
+                }
+            }
+
+            setTimeout(startChaseMode, Math.random() * 20000 + 10000);
+            setTimeout(startDoublePoints, Math.random() * 20000 + 10000);
+        }
+
+        function checkGameModes() {
+            if (isChaseMode) {
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+            if (isDoublePoints) {
+                ctx.fillStyle = 'rgba(255, 255, 0, 0.2)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+        }
+
+        startButton.addEventListener('click', startGame);
+        changeBoxesButton.addEventListener('click', changeBoxes);
+        document.addEventListener('keydown', changeDirection);
+
+        // Mobile controls
+        document.getElementById('up').addEventListener('click', () => changeDirection('ArrowUp'));
+        document.getElementById('down').addEventListener('click', () => changeDirection('ArrowDown'));
+        document.getElementById('left').addEventListener('click', () => changeDirection('ArrowLeft'));
+        document.getElementById('right').addEventListener('click', () => changeDirection('ArrowRight'));
+
+        // Speed control
+        speedSlider.addEventListener('input', () => {
+            clearInterval(gameLoop);
+            gameSpeed = 300 - speedSlider.value * 25;  // Adjust speed based on slider value
+            gameLoop = setInterval(drawGame, gameSpeed);
+        });
+
+        // Initialize the game
+        generateFoods();
+        createGhosts();
+        drawGame();
+    </script>
+</body>
+</html>
+
+ 
+
+            
