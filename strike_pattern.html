@@ -73,6 +73,13 @@
         var world = new CANNON.World();
         world.gravity.set(0, -9.82, 0);
 
+        // Define collision groups
+        const COLLISION_GROUPS = {
+            GROUND: 1 << 0,    // 1
+            BOMBLET: 1 << 1,   // 2
+            MISSILE: 1 << 2    // 4 (if needed)
+        };
+
         var groundGeometry = new THREE.PlaneGeometry(1000, 1000);
         var groundMaterial = new THREE.MeshStandardMaterial({ color: 0x228B22 });
         var groundMesh = new THREE.Mesh(groundGeometry, groundMaterial);
@@ -86,6 +93,11 @@
             material: new CANNON.Material({ friction: 0.5, restitution: 0.1 })
         });
         groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+
+        // Assign collision groups to the ground
+        groundBody.collisionFilterGroup = COLLISION_GROUPS.GROUND;
+        groundBody.collisionFilterMask = COLLISION_GROUPS.BOMBLET;
+
         world.addBody(groundBody);
 
         var missileGeometry = new THREE.CylinderGeometry(0.5, 1, 10, 32);
@@ -115,8 +127,8 @@
         var params = {
             angle: 45,
             numberOfBomblets: 20,
-            spreadAngle: 20,
-            spreadSpeed: 10,
+            spreadAngle: 0,       // Minimal spread angle in degrees
+            spreadSpeed: 0,       // Minimal spread speed
             launch: function() {
                 console.log('Launch button clicked');
                 resetSimulation();
@@ -137,8 +149,8 @@
 
         gui.add(params, 'angle', 0, 90).name('Launch Angle (°)');
         gui.add(params, 'numberOfBomblets', 1, 300, 1).name('Bomblets');
-        gui.add(params, 'spreadAngle', 0, 90).name('Spread Angle (°)');
-        gui.add(params, 'spreadSpeed', 0, 10).name('Spread Speed');
+        gui.add(params, 'spreadAngle', 0, 90).name('Spread Angle (°)').listen(); // Reduced max angle
+        gui.add(params, 'spreadSpeed', 0, 30).name('Spread Speed').listen();      // Reduced max speed
         gui.add(params, 'launch').name('Launch Missile');
         gui.add(params, 'breakUp').name('Break Up Missile');
         gui.add(params, 'reset').name('Reset Simulation');
@@ -171,8 +183,15 @@
                 var bombletBody = new CANNON.Body({
                     mass: 1,
                     shape: bombletShape,
-                    material: new CANNON.Material({ friction: 0.4, restitution: 0.3 })
+                    material: new CANNON.Material({ friction: 0.4, restitution: 0 }),
+                    linearDamping: 0,   // Prevent slowing down
+                    angularDamping: 0   // Prevent rotation-induced slowing
                 });
+
+                // Assign collision group and mask
+                bombletBody.collisionFilterGroup = COLLISION_GROUPS.BOMBLET;
+                bombletBody.collisionFilterMask = COLLISION_GROUPS.GROUND;
+
                 world.addBody(bombletBody);
 
                 bomblets.push({ mesh: bombletMesh, body: bombletBody });
@@ -180,32 +199,7 @@
         }
 
         function createMissileFragments(position, velocity) {
-            var numFragments = 5;
-            for (var i = 0; i < numFragments; i++) {
-                var fragmentGeometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
-                var fragmentMaterial = new THREE.MeshStandardMaterial({ color: 0x808080 });
-                var fragmentMesh = new THREE.Mesh(fragmentGeometry, fragmentMaterial);
-                fragmentMesh.castShadow = true;
-                scene.add(fragmentMesh);
-
-                var fragmentShape = new CANNON.Box(new CANNON.Vec3(0.1, 0.1, 0.1));
-                var fragmentBody = new CANNON.Body({
-                    mass: 0.5,
-                    shape: fragmentShape,
-                    material: new CANNON.Material({ friction: 0.3, restitution: 0.2 })
-                });
-                fragmentBody.position.copy(position);
-
-                var randomVelocity = new CANNON.Vec3(
-                    (Math.random() - 0.5) * 10,
-                    (Math.random() - 0.5) * 10,
-                    (Math.random() - 0.5) * 10
-                );
-                fragmentBody.velocity = velocity.vadd(randomVelocity);
-                world.addBody(fragmentBody);
-
-                bomblets.push({ mesh: fragmentMesh, body: fragmentBody });
-            }
+            // Optional: If you don't need missile fragments, you can comment this function out
         }
 
         function launchMissile(angleDegrees) {
@@ -254,7 +248,8 @@
         function releaseBomblets() {
             console.log('Releasing bomblets');
             createBomblets(params.numberOfBomblets);
-            createMissileFragments(missileBody.position, missileBody.velocity.clone());
+            // Optionally remove missile fragments if not needed
+            // createMissileFragments(missileBody.position, missileBody.velocity.clone());
 
             scene.remove(missileMesh);
             world.removeBody(missileBody);
@@ -263,32 +258,31 @@
             bombletsReleased = true;
 
             var missileVelocity = missileBody.velocity.clone();
-            var missileSpeed = missileVelocity.length();
-            if (missileSpeed === 0) {
-                missileSpeed = 1;
-            }
-            var missileDirection = missileVelocity.clone().normalize();
-            var missileDirectionTHREE = new THREE.Vector3(missileDirection.x, missileDirection.y, missileDirection.z);
+
+            // Define a slight reduction factor (e.g., 95% of missile speed)
+            var reductionFactor = 0.95;
 
             for (var i = 0; i < bomblets.length; i++) {
                 var bombletBody = bomblets[i].body;
                 bombletBody.position.copy(missileBody.position);
 
-                var spreadAngleRad = params.spreadAngle * Math.PI / 180;
-                var randomDirection = randomDirectionInCone(missileDirectionTHREE, spreadAngleRad);
-                var spreadSpeed = params.spreadSpeed * Math.random();
+                // Optionally, add a minimal spread
+                var spreadAngleRad = THREE.MathUtils.degToRad(params.spreadAngle); // Convert degrees to radians
+                var randomDirection = randomDirectionInCone(new THREE.Vector3(missileVelocity.x, missileVelocity.y, missileVelocity.z).normalize(), spreadAngleRad);
 
-                var bombletVelocityTHREE = new THREE.Vector3(
-                    missileVelocity.x,
-                    missileVelocity.y,
-                    missileVelocity.z
-                ).add(randomDirection.multiplyScalar(spreadSpeed));
+                // Set bomblet velocity to slightly less than missile's velocity
+                var spreadVelocity = new CANNON.Vec3(randomDirection.x, randomDirection.y, randomDirection.z).scale(params.spreadSpeed);
+                var reducedMissileVelocity = missileVelocity.clone().scale(reductionFactor);
+                var bombletVelocity = reducedMissileVelocity.vadd(spreadVelocity);
 
                 bombletBody.velocity.set(
-                    bombletVelocityTHREE.x,
-                    bombletVelocityTHREE.y,
-                    bombletVelocityTHREE.z
+                    bombletVelocity.x,
+                    bombletVelocity.y,
+                    bombletVelocity.z
                 );
+
+                // Ensure no angular velocity
+                bombletBody.angularVelocity.set(0, 0, 0);
 
                 bombletBody.addEventListener('collide', function(event) {
                     var collidedWith = event.body;
@@ -357,7 +351,7 @@
 
             if (missileMesh && missileBody) {
                 missileMesh.position.copy(missileBody.position);
-                
+
                 // Update missile rotation to point in the direction of travel
                 if (missileBody.velocity.length() > 0.1) {
                     var velocity = missileBody.velocity;
@@ -383,7 +377,6 @@
         }
 
         animate();
-
 
         window.addEventListener('resize', onWindowResize, false);
 
