@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Measurement Uncertainty Demonstration</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1, h2 {
+            color: #2c3e50;
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
+        .controls label {
+            display: inline-block;
+            width: 150px;
+        }
+        .controls input, .controls button {
+            margin: 5px;
+        }
+        #explanation {
+            background-color: #f0f0f0;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Measurement Uncertainty Demonstration</h1>
+    
+    <div class="controls">
+        <label for="mean">Mean:</label>
+        <input type="number" id="mean" value="10" step="0.1"><br>
+        
+        <label for="uncertainty">Uncertainty:</label>
+        <input type="range" id="uncertainty" min="0.1" max="2" step="0.1" value="0.5">
+        <span id="uncertaintyValue">0.5</span><br>
+        
+        <label for="minRange">Min Range:</label>
+        <input type="number" id="minRange" value="5" step="0.1"><br>
+        
+        <label for="maxRange">Max Range:</label>
+        <input type="number" id="maxRange" value="15" step="0.1"><br>
+        
+        <label for="binCount">Number of Bins:</label>
+        <input type="number" id="binCount" value="100" min="10" max="200"><br>
+        
+        <button onclick="addMeasurements(1)">Take 1 Measurement</button>
+        <button onclick="addMeasurements(100)">Add 100 Points</button>
+        <button onclick="addMeasurements(1000)">Add 1000 Points</button>
+        <button onclick="addMeasurements(10000)">Add 10000 Points</button>
+        <button onclick="resetMeasurements()">Reset</button>
+    </div>
+    
+    <div id="stats"></div>
+    
+    <canvas id="chart"></canvas>
+    
+    <div id="explanation">
+        <h2>Why do repeated measurements form a Gaussian distribution?</h2>
+        <p>Repeated measurements of the same quantity tend to form a Gaussian (or Normal) distribution due to a combination of factors:</p>
+        <ol>
+            <li><strong>Central Limit Theorem:</strong> This fundamental principle in statistics states that when you add up many independent random variables, the result tends to follow a Gaussian distribution, regardless of the original distribution of the variables. Another example you are familiar with. Imagine you're throwing darts at a dartboard, and each time you measure how far the dart lands from the bullseye. Sometimes you're close, sometimes you're far, but the distance is random.
+
+                Now, if you keep throwing darts and measure the distance from the bullseye for each throw, then take the average of those distances, the Central Limit Theorem says that if you do this enough times, the average distances will form a bell-shaped curve. Most of your averages will be close to the bullseye, and only a few will be far away. Even though each throw is random, when you average lots of throws, the results become predictable and follow that bell curve pattern.</li>
+            <li><strong>Multiple Sources of Error:</strong> In real-world measurements, there are often many small, independent sources of error (e.g., instrument precision, environmental factors, human error). These combine to create the overall uncertainty in the measurement.</li>
+            <li><strong>Symmetry of Errors:</strong> In most cases, positive and negative errors are equally likely, leading to a symmetric distribution around the true value.</li>
+            <li><strong>Likelihood of Errors:</strong> Small errors are more common than large errors, which leads to the characteristic "bell curve" shape of the Gaussian distribution.</li>
+        </ol>
+        <p>As you take more measurements in this demo, you'll see the histogram increasingly resemble the smooth Gaussian curve. This illustrates how, with a large number of measurements, we can better estimate the true value and understand the uncertainty in our measurement process.</p>
+    </div>
+
+    <script>
+        let measurements = [];
+        let chart;
+
+        function initChart() {
+            const ctx = document.getElementById('chart').getContext('2d');
+            const min = parseFloat(document.getElementById('minRange').value);
+            const max = parseFloat(document.getElementById('maxRange').value);
+            if (chart) {
+                chart.destroy();
+            }
+            chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Measurements',
+                        data: [],
+                        backgroundColor: 'rgba(75, 192, 192, 0.6)'
+                    }, {
+                        label: 'Gaussian Curve',
+                        data: [],
+                        type: 'line',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            title: {
+                                display: true,
+                                text: 'Measurement Value'
+                            },
+                            min: min,
+                            max: max
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Frequency'
+                            },
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function generateMeasurement() {
+            const mean = parseFloat(document.getElementById('mean').value);
+            const uncertainty = parseFloat(document.getElementById('uncertainty').value);
+            const u1 = Math.random();
+            const u2 = Math.random();
+            const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+            return mean + uncertainty * z;
+        }
+
+        function addMeasurements(count) {
+            for (let i = 0; i < count; i++) {
+                measurements.push(generateMeasurement());
+            }
+            updateChart();
+            updateStats();
+        }
+
+        function resetMeasurements() {
+            measurements = [];
+            updateChart();
+            updateStats();
+        }
+
+        function updateChart() {
+            const min = parseFloat(document.getElementById('minRange').value);
+            const max = parseFloat(document.getElementById('maxRange').value);
+            const binCount = parseInt(document.getElementById('binCount').value);
+            const binWidth = (max - min) / binCount;
+            const bins = Array(binCount).fill(0);
+            
+            measurements.forEach(m => {
+                if (m >= min && m < max) {
+                    const binIndex = Math.min(Math.floor((m - min) / binWidth), binCount - 1);
+                    bins[binIndex]++;
+                }
+            });
+
+            const labels = bins.map((_, i) => min + (i + 0.5) * binWidth);
+            
+            chart.data.labels = labels;
+            chart.data.datasets[0].data = bins.map((count, i) => ({
+                x: labels[i],
+                y: count
+            }));
+
+            // Calculate Gaussian curve
+            const mean = measurements.reduce((sum, m) => sum + m, 0) / measurements.length;
+            const stdDev = Math.sqrt(measurements.reduce((sum, m) => sum + Math.pow(m - mean, 2), 0) / measurements.length);
+            const gaussianCurve = labels.map(x => ({
+                x: x,
+                y: (measurements.length * binWidth / (stdDev * Math.sqrt(2 * Math.PI))) * 
+                   Math.exp(-Math.pow(x - mean, 2) / (2 * stdDev * stdDev))
+            }));
+            chart.data.datasets[1].data = gaussianCurve;
+
+            chart.options.scales.x.min = min;
+            chart.options.scales.x.max = max;
+
+            chart.update();
+        }
+
+        function updateStats() {
+            const mean = measurements.length > 0 ? measurements.reduce((sum, m) => sum + m, 0) / measurements.length : 0;
+            const stdDev = measurements.length > 0 ? Math.sqrt(measurements.reduce((sum, m) => sum + Math.pow(m - mean, 2), 0) / measurements.length) : 0;
+            document.getElementById('stats').innerHTML = `
+                <p>Number of measurements: ${measurements.length}</p>
+                <p>Calculated Mean: ${mean.toFixed(2)}</p>
+                <p>Standard Deviation: ${stdDev.toFixed(2)}</p>
+            `;
+        }
+
+        document.getElementById('uncertainty').addEventListener('input', function() {
+            document.getElementById('uncertaintyValue').textContent = this.value;
+        });
+
+        document.getElementById('mean').addEventListener('change', resetMeasurements);
+        document.getElementById('uncertainty').addEventListener('change', resetMeasurements);
+        document.getElementById('minRange').addEventListener('change', function() {
+            initChart();
+            updateChart();
+        });
+        document.getElementById('maxRange').addEventListener('change', function() {
+            initChart();
+            updateChart();
+        });
+        document.getElementById('binCount').addEventListener('change', function() {
+            updateChart();
+        });
+
+        initChart();
+    </script>
+</body>
+</html>
