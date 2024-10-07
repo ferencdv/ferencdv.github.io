@@ -2,456 +2,225 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Cluster Munitions Simulation</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Measurement Uncertainty Demonstration</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; }
-        canvas { display: block; }
-        #overlay, #debug {
-            position: absolute;
-            top: 10px;
-            background: rgba(255, 255, 255, 0.8);
-            padding: 10px;
-            border-radius: 5px;
+        body {
             font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
         }
-        #overlay { left: 10px; z-index: 100; }
-        #debug { right: 10px; z-index: 100; }
-        #loadImageBtn {
-            position: absolute;
-            bottom: 10px;
-            right: 10px;
-            z-index: 100;
+        h1, h2 {
+            color: #2c3e50;
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
+        .controls label {
+            display: inline-block;
+            width: 150px;
+        }
+        .controls input, .controls button {
+            margin: 5px;
+        }
+        #explanation {
+            background-color: #f0f0f0;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
         }
     </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dat.gui@0.7.9/build/dat.gui.min.js"></script>
 </head>
 <body>
-    <div id="overlay"></div>
-    <div id="debug"></div>
-    <button id="loadImageBtn">Load Background Image</button>
+    <h1>Measurement Uncertainty Demonstration</h1>
+    
+    <div class="controls">
+        <label for="mean">Mean:</label>
+        <input type="number" id="mean" value="10" step="0.1"><br>
+        
+        <label for="uncertainty">Uncertainty:</label>
+        <input type="range" id="uncertainty" min="0.1" max="2" step="0.1" value="0.5">
+        <span id="uncertaintyValue">0.5</span><br>
+        
+        <label for="minRange">Min Range:</label>
+        <input type="number" id="minRange" value="5" step="0.1"><br>
+        
+        <label for="maxRange">Max Range:</label>
+        <input type="number" id="maxRange" value="15" step="0.1"><br>
+        
+        <label for="binCount">Number of Bins:</label>
+        <input type="number" id="binCount" value="100" min="10" max="200"><br>
+        
+        <button onclick="addMeasurements(1)">Take 1 Measurement</button>
+        <button onclick="addMeasurements(100)">Add 100 Points</button>
+        <button onclick="addMeasurements(1000)">Add 1000 Points</button>
+        <button onclick="addMeasurements(10000)">Add 10000 Points</button>
+        <button onclick="resetMeasurements()">Reset</button>
+    </div>
+    
+    <div id="stats"></div>
+    
+    <canvas id="chart"></canvas>
+    
+    <div id="explanation">
+        <h2>Why do repeated measurements form a Gaussian distribution?</h2>
+        <p>Repeated measurements of the same quantity tend to form a Gaussian (or Normal) distribution due to a combination of factors:</p>
+        <ol>
+            <li><strong>Central Limit Theorem:</strong> This fundamental principle in statistics states that when you add up many independent random variables, the result tends to follow a Gaussian distribution, regardless of the original distribution of the variables. Another example you are familiar with. Imagine you're throwing darts at a dartboard, and each time you measure how far the dart lands from the bullseye. Sometimes you're close, sometimes you're far, but the distance is random.
+
+                Now, if you keep throwing darts and measure the distance from the bullseye for each throw, then take the average of those distances, the Central Limit Theorem says that if you do this enough times, the average distances will form a bell-shaped curve. Most of your averages will be close to the bullseye, and only a few will be far away. Even though each throw is random, when you average lots of throws, the results become predictable and follow that bell curve pattern.</li>
+            <li><strong>Multiple Sources of Error:</strong> In real-world measurements, there are often many small, independent sources of error (e.g., instrument precision, environmental factors, human error). These combine to create the overall uncertainty in the measurement.</li>
+            <li><strong>Symmetry of Errors:</strong> In most cases, positive and negative errors are equally likely, leading to a symmetric distribution around the true value.</li>
+            <li><strong>Likelihood of Errors:</strong> Small errors are more common than large errors, which leads to the characteristic "bell curve" shape of the Gaussian distribution.</li>
+        </ol>
+        <p>As you take more measurements in this demo, you'll see the histogram increasingly resemble the smooth Gaussian curve. This illustrates how, with a large number of measurements, we can better estimate the true value and understand the uncertainty in our measurement process.</p>
+    </div>
+
     <script>
-        console.log('Three.js version:', THREE.REVISION);
-        console.log('Cannon.js version:', CANNON ? CANNON : 'CANNON not defined');
-        console.log('dat.GUI:', dat ? 'Loaded' : 'dat.GUI not defined');
+        let measurements = [];
+        let chart;
 
-        if (!THREE || !CANNON || !dat) {
-            alert('One or more libraries failed to load. Check the console for errors.');
-        }
-
-        var scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x87ceeb);
-
-        var camera3D = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera3D.position.set(0, 50, 100);
-        camera3D.lookAt(0, 50, 0);
-
-        var camera2D = new THREE.OrthographicCamera(
-            window.innerWidth / -100, window.innerWidth / 100,
-            window.innerHeight / 100, window.innerHeight / -100,
-            0.1, 1000
-        );
-        camera2D.position.set(0, 500, 0);
-        camera2D.lookAt(new THREE.Vector3(0, 0, 0));
-
-        var currentCamera = camera3D;
-
-        var renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true;
-        document.body.appendChild(renderer.domElement);
-
-        var ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
-        scene.add(ambientLight);
-
-        var directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
-        directionalLight.position.set(100, 200, 100);
-        directionalLight.castShadow = true;
-        scene.add(directionalLight);
-
-        var world = new CANNON.World();
-        world.gravity.set(0, -9.82, 0);
-
-        // Define collision groups
-        const COLLISION_GROUPS = {
-            GROUND: 1 << 0,    // 1
-            BOMBLET: 1 << 1,   // 2
-            MISSILE: 1 << 2    // 4 (if needed)
-        };
-
-        var groundGeometry = new THREE.PlaneGeometry(1000, 1000);
-        var groundMaterial = new THREE.MeshStandardMaterial({ color: 0x228B22 });
-        var groundMesh = new THREE.Mesh(groundGeometry, groundMaterial);
-        groundMesh.rotation.x = -Math.PI / 2;
-        groundMesh.receiveShadow = true;
-        scene.add(groundMesh);
-
-        var groundBody = new CANNON.Body({
-            mass: 0,
-            shape: new CANNON.Plane(),
-            material: new CANNON.Material({ friction: 0.5, restitution: 0.1 })
-        });
-        groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
-
-        // Assign collision groups to the ground
-        groundBody.collisionFilterGroup = COLLISION_GROUPS.GROUND;
-        groundBody.collisionFilterMask = COLLISION_GROUPS.BOMBLET;
-
-        world.addBody(groundBody);
-
-        var missileGeometry = new THREE.CylinderGeometry(0.5, 1, 10, 32);
-        missileGeometry.translate(0, -5, 0);
-        var missileMaterial = new THREE.MeshStandardMaterial({
-            color: 0xff0000,
-            emissive: 0xff4500,
-            emissiveIntensity: 0.5
-        });
-        var missileMesh = new THREE.Mesh(missileGeometry, missileMaterial);
-        missileMesh.castShadow = true;
-        missileMesh.position.set(0, 50, 0);
-        scene.add(missileMesh);
-
-        var missileShape = new CANNON.Cylinder(0.5, 1, 10, 32);
-        var missileBody = new CANNON.Body({ mass: 5 });
-        missileBody.addShape(missileShape);
-        missileBody.position.set(0, 50, 0);
-        world.addBody(missileBody);
-
-        var bomblets = [];
-        var impactMarkers = [];
-
-        var gui = new dat.GUI({ autoPlace: false });
-        document.getElementById('overlay').appendChild(gui.domElement);
-
-        var params = {
-            angle: 45,
-            numberOfBomblets: 20,
-            spreadAngle: 0,       // Minimal spread angle in degrees
-            spreadSpeed: 0,       // Minimal spread speed
-            launch: function() {
-                console.log('Launch button clicked');
-                resetSimulation();
-                launchMissile(params.angle);
-            },
-            breakUp: function() {
-                console.log('Break Up Missile button clicked');
-                if (!bombletsReleased && missileBody.velocity.length() > 0) {
-                    releaseBomblets();
-                }
-            },
-            reset: function() {
-                console.log('Reset button clicked');
-                resetSimulation();
-            },
-            view: '3D'
-        };
-
-        gui.add(params, 'angle', 0, 90).name('Launch Angle (°)');
-        gui.add(params, 'numberOfBomblets', 1, 300, 1).name('Bomblets');
-        gui.add(params, 'spreadAngle', 0, 90).name('Spread Angle (°)').listen(); // Reduced max angle
-        gui.add(params, 'spreadSpeed', 0, 30).name('Spread Speed').listen();      // Reduced max speed
-        gui.add(params, 'launch').name('Launch Missile');
-        gui.add(params, 'breakUp').name('Break Up Missile');
-        gui.add(params, 'reset').name('Reset Simulation');
-        gui.add(params, 'view', ['3D', '2D']).name('View Mode').onChange(function(value) {
-            currentCamera = value === '3D' ? camera3D : camera2D;
-        });
-
-        var guiSpeed = gui.addFolder('Missile Speed Control');
-        var missileSpeedControl = { value: 20 };
-        guiSpeed.add(missileSpeedControl, 'value', 1, 50).step(0.1).name('Launch Speed');
-        guiSpeed.open();
-
-        var altitudeControl = { altitude: 0 };
-        gui.add(altitudeControl, 'altitude').name('Current Altitude').listen();
-
-        function createBomblets(number) {
-            console.log('Creating ' + number + ' bomblets');
-            for (var i = 0; i < number; i++) {
-                var bombletGeometry = new THREE.SphereGeometry(0.5, 16, 16);
-                var bombletMaterial = new THREE.MeshStandardMaterial({
-                    color: 0xffff00,
-                    emissive: 0xffff00,
-                    emissiveIntensity: 0.5
-                });
-                var bombletMesh = new THREE.Mesh(bombletGeometry, bombletMaterial);
-                bombletMesh.castShadow = true;
-                scene.add(bombletMesh);
-
-                var bombletShape = new CANNON.Sphere(0.5);
-                var bombletBody = new CANNON.Body({
-                    mass: 1,
-                    shape: bombletShape,
-                    material: new CANNON.Material({ friction: 0.4, restitution: 0 }),
-                    linearDamping: 0,   // Prevent slowing down
-                    angularDamping: 0   // Prevent rotation-induced slowing
-                });
-
-                // Assign collision group and mask
-                bombletBody.collisionFilterGroup = COLLISION_GROUPS.BOMBLET;
-                bombletBody.collisionFilterMask = COLLISION_GROUPS.GROUND;
-
-                world.addBody(bombletBody);
-
-                bomblets.push({ mesh: bombletMesh, body: bombletBody });
+        function initChart() {
+            const ctx = document.getElementById('chart').getContext('2d');
+            const min = parseFloat(document.getElementById('minRange').value);
+            const max = parseFloat(document.getElementById('maxRange').value);
+            if (chart) {
+                chart.destroy();
             }
-        }
-
-        function createMissileFragments(position, velocity) {
-            // Optional: If you don't need missile fragments, you can comment this function out
-        }
-
-        function launchMissile(angleDegrees) {
-            console.log('Launching missile at angle: ' + angleDegrees + ' degrees');
-            var angleRadians = (angleDegrees * Math.PI) / 180;
-            var speed = missileSpeedControl.value;
-            missileBody.velocity.set(
-                speed * Math.cos(angleRadians),
-                speed * Math.sin(angleRadians),
-                0
-            );
-            bombletsReleased = false;
-        }
-
-        function resetSimulation() {
-            console.log('Resetting simulation');
-            missileBody.position.set(0, 50, 0);
-            missileBody.velocity.set(0, 0, 0);
-            missileBody.angularVelocity.set(0, 0, 0);
-            missileBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
-
-            if (scene.children.indexOf(missileMesh) === -1) {
-                scene.add(missileMesh);
-                console.log('Missile mesh added back to scene');
-            }
-            if (world.bodies.indexOf(missileBody) === -1) {
-                world.addBody(missileBody);
-                console.log('Missile body added back to physics world');
-            }
-
-            for (var i = 0; i < bomblets.length; i++) {
-                var bomblet = bomblets[i];
-                scene.remove(bomblet.mesh);
-                world.removeBody(bomblet.body);
-            }
-            bomblets.length = 0;
-
-            for (var i = 0; i < impactMarkers.length; i++) {
-                scene.remove(impactMarkers[i]);
-            }
-            impactMarkers.length = 0;
-
-            altitudeControl.altitude = 0;
-        }
-
-        function releaseBomblets() {
-            console.log('Releasing bomblets');
-            createBomblets(params.numberOfBomblets);
-            // Optionally remove missile fragments if not needed
-            // createMissileFragments(missileBody.position, missileBody.velocity.clone());
-
-            scene.remove(missileMesh);
-            world.removeBody(missileBody);
-            console.log('Missile removed from simulation');
-
-            bombletsReleased = true;
-
-            var missileVelocity = missileBody.velocity.clone();
-
-            // Define a slight reduction factor (e.g., 95% of missile speed)
-            var reductionFactor = 0.95;
-
-            for (var i = 0; i < bomblets.length; i++) {
-                var bombletBody = bomblets[i].body;
-                bombletBody.position.copy(missileBody.position);
-
-                // Optionally, add a minimal spread
-                var spreadAngleRad = THREE.MathUtils.degToRad(params.spreadAngle); // Convert degrees to radians
-                var randomDirection = randomDirectionInCone(new THREE.Vector3(missileVelocity.x, missileVelocity.y, missileVelocity.z).normalize(), spreadAngleRad);
-
-                // Set bomblet velocity to slightly less than missile's velocity
-                var spreadVelocity = new CANNON.Vec3(randomDirection.x, randomDirection.y, randomDirection.z).scale(params.spreadSpeed);
-                var reducedMissileVelocity = missileVelocity.clone().scale(reductionFactor);
-                var bombletVelocity = reducedMissileVelocity.vadd(spreadVelocity);
-
-                bombletBody.velocity.set(
-                    bombletVelocity.x,
-                    bombletVelocity.y,
-                    bombletVelocity.z
-                );
-
-                // Ensure no angular velocity
-                bombletBody.angularVelocity.set(0, 0, 0);
-
-                bombletBody.addEventListener('collide', function(event) {
-                    var collidedWith = event.body;
-                    if (collidedWith === groundBody) {
-                        markImpact(this.position);
-                        this.velocity.set(0, 0, 0);
-                        this.angularVelocity.set(0, 0, 0);
-                        this.mass = 0;
-                        this.updateMassProperties();
+            chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Measurements',
+                        data: [],
+                        backgroundColor: 'rgba(75, 192, 192, 0.6)'
+                    }, {
+                        label: 'Gaussian Curve',
+                        data: [],
+                        type: 'line',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            title: {
+                                display: true,
+                                text: 'Measurement Value'
+                            },
+                            min: min,
+                            max: max
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Frequency'
+                            },
+                            beginAtZero: true
+                        }
                     }
-                });
-            }
-        }
-
-        function randomDirectionInCone(coneDirection, coneAngle) {
-            var u = Math.random();
-            var v = Math.random();
-
-            var theta = 2 * Math.PI * u;
-            var phi = Math.acos(1 - v * (1 - Math.cos(coneAngle)));
-
-            var sinPhi = Math.sin(phi);
-
-            var x = sinPhi * Math.cos(theta);
-            var y = sinPhi * Math.sin(theta);
-            var z = Math.cos(phi);
-
-            var vector = new THREE.Vector3(x, z, y);
-
-            var quaternion = new THREE.Quaternion();
-            var from = new THREE.Vector3(0, 1, 0);
-            var to = coneDirection.clone().normalize();
-            if (from.equals(to)) {
-                return vector.clone();
-            }
-            var axis = new THREE.Vector3();
-            axis.crossVectors(from, to).normalize();
-            var angle = Math.acos(from.dot(to));
-            quaternion.setFromAxisAngle(axis, angle);
-            vector.applyQuaternion(quaternion);
-
-            return vector.normalize();
-        }
-
-        function markImpact(position) {
-            console.log('Bomblet impacted at:', position);
-            var markerGeometry = new THREE.SphereGeometry(0.5, 8, 8);
-            var markerMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
-            var markerMesh = new THREE.Mesh(markerGeometry, markerMaterial);
-            markerMesh.position.copy(position);
-            scene.add(markerMesh);
-            impactMarkers.push(markerMesh);
-        }
-
-        const debugInfo = document.getElementById('debug');
-
-        var bombletsReleased = false;
-        var timeStep = 1 / 60; // 60 fps
-
-        function animate() {
-            requestAnimationFrame(animate);
-
-            world.step(timeStep);
-
-            altitudeControl.altitude = Math.max(0, missileBody.position.y).toFixed(2);
-
-            if (missileMesh && missileBody) {
-                missileMesh.position.copy(missileBody.position);
-
-                // Update missile rotation to point in the direction of travel
-                if (missileBody.velocity.length() > 0.1) {
-                    var velocity = missileBody.velocity;
-                    var direction = new THREE.Vector3(velocity.x, velocity.y, velocity.z).normalize();
-                    var quaternion = new THREE.Quaternion();
-                    quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
-                    missileMesh.setRotationFromQuaternion(quaternion);
                 }
-            }
+            });
+        }
 
-            for (var i = 0; i < bomblets.length; i++) {
-                var bomblet = bomblets[i];
-                bomblet.mesh.position.copy(bomblet.body.position);
-                bomblet.mesh.quaternion.copy(bomblet.body.quaternion);
-            }
+        function generateMeasurement() {
+            const mean = parseFloat(document.getElementById('mean').value);
+            const uncertainty = parseFloat(document.getElementById('uncertainty').value);
+            const u1 = Math.random();
+            const u2 = Math.random();
+            const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+            return mean + uncertainty * z;
+        }
 
-            debugInfo.innerHTML = `
-                Missile Position: ${missileBody.position.x.toFixed(2)}, ${missileBody.position.y.toFixed(2)}, ${missileBody.position.z.toFixed(2)}<br>
-                Missile Velocity: ${missileBody.velocity.length().toFixed(2)}
+        function addMeasurements(count) {
+            for (let i = 0; i < count; i++) {
+                measurements.push(generateMeasurement());
+            }
+            updateChart();
+            updateStats();
+        }
+
+        function resetMeasurements() {
+            measurements = [];
+            updateChart();
+            updateStats();
+        }
+
+        function updateChart() {
+            const min = parseFloat(document.getElementById('minRange').value);
+            const max = parseFloat(document.getElementById('maxRange').value);
+            const binCount = parseInt(document.getElementById('binCount').value);
+            const binWidth = (max - min) / binCount;
+            const bins = Array(binCount).fill(0);
+            
+            measurements.forEach(m => {
+                if (m >= min && m < max) {
+                    const binIndex = Math.min(Math.floor((m - min) / binWidth), binCount - 1);
+                    bins[binIndex]++;
+                }
+            });
+
+            const labels = bins.map((_, i) => min + (i + 0.5) * binWidth);
+            
+            chart.data.labels = labels;
+            chart.data.datasets[0].data = bins.map((count, i) => ({
+                x: labels[i],
+                y: count
+            }));
+
+            // Calculate Gaussian curve
+            const mean = measurements.reduce((sum, m) => sum + m, 0) / measurements.length;
+            const stdDev = Math.sqrt(measurements.reduce((sum, m) => sum + Math.pow(m - mean, 2), 0) / measurements.length);
+            const gaussianCurve = labels.map(x => ({
+                x: x,
+                y: (measurements.length * binWidth / (stdDev * Math.sqrt(2 * Math.PI))) * 
+                   Math.exp(-Math.pow(x - mean, 2) / (2 * stdDev * stdDev))
+            }));
+            chart.data.datasets[1].data = gaussianCurve;
+
+            chart.options.scales.x.min = min;
+            chart.options.scales.x.max = max;
+
+            chart.update();
+        }
+
+        function updateStats() {
+            const mean = measurements.length > 0 ? measurements.reduce((sum, m) => sum + m, 0) / measurements.length : 0;
+            const stdDev = measurements.length > 0 ? Math.sqrt(measurements.reduce((sum, m) => sum + Math.pow(m - mean, 2), 0) / measurements.length) : 0;
+            document.getElementById('stats').innerHTML = `
+                <p>Number of measurements: ${measurements.length}</p>
+                <p>Calculated Mean: ${mean.toFixed(2)}</p>
+                <p>Standard Deviation: ${stdDev.toFixed(2)}</p>
             `;
-
-            renderer.render(scene, currentCamera);
         }
 
-        animate();
-
-        window.addEventListener('resize', onWindowResize, false);
-
-        function onWindowResize() {
-            camera3D.aspect = window.innerWidth / window.innerHeight;
-            camera3D.updateProjectionMatrix();
-
-            camera2D.left = window.innerWidth / -200;
-            camera2D.right = window.innerWidth / 200;
-            camera2D.top = window.innerHeight / 200;
-            camera2D.bottom = window.innerHeight / -200;
-            camera2D.updateProjectionMatrix();
-
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            console.log('Window resized');
-        }
-
-        var isMouseDown = false;
-        var previousMousePosition = { x: 0, y: 0 };
-
-        renderer.domElement.addEventListener('mousedown', function(event) {
-            isMouseDown = true;
-            previousMousePosition = { x: event.clientX, y: event.clientY };
+        document.getElementById('uncertainty').addEventListener('input', function() {
+            document.getElementById('uncertaintyValue').textContent = this.value;
         });
 
-        renderer.domElement.addEventListener('mouseup', function() {
-            isMouseDown = false;
+        document.getElementById('mean').addEventListener('change', resetMeasurements);
+        document.getElementById('uncertainty').addEventListener('change', resetMeasurements);
+        document.getElementById('minRange').addEventListener('change', function() {
+            initChart();
+            updateChart();
+        });
+        document.getElementById('maxRange').addEventListener('change', function() {
+            initChart();
+            updateChart();
+        });
+        document.getElementById('binCount').addEventListener('change', function() {
+            updateChart();
         });
 
-        renderer.domElement.addEventListener('mousemove', function(event) {
-            if (isMouseDown && currentCamera === camera3D) {
-                var deltaMove = {
-                    x: event.clientX - previousMousePosition.x,
-                    y: event.clientY - previousMousePosition.y
-                };
-
-                var rotationSpeed = 0.005;
-                camera3D.rotation.y -= deltaMove.x * rotationSpeed;
-                camera3D.rotation.x -= deltaMove.y * rotationSpeed;
-
-                previousMousePosition = { x: event.clientX, y: event.clientY };
-            }
-        });
-
-        renderer.domElement.addEventListener('wheel', function(event) {
-            event.preventDefault();
-            if (currentCamera === camera3D) {
-                camera3D.position.z += event.deltaY * 0.1;
-                camera3D.position.z = Math.max(10, Math.min(500, camera3D.position.z));
-            } else {
-                var zoomFactor = 1 + event.deltaY * 0.001;
-                camera2D.left *= zoomFactor;
-                camera2D.right *= zoomFactor;
-                camera2D.top *= zoomFactor;
-                camera2D.bottom *= zoomFactor;
-                camera2D.updateProjectionMatrix();
-            }
-        });
-
-        document.getElementById('loadImageBtn').addEventListener('click', function() {
-            var input = document.createElement('input');
-            input.type = 'file';
-            input.accept = 'image/*';
-            input.onchange = function(event) {
-                var file = event.target.files[0];
-                var reader = new FileReader();
-                reader.onload = function(e) {
-                    var texture = new THREE.TextureLoader().load(e.target.result);
-                    groundMesh.material.map = texture;
-                    groundMesh.material.needsUpdate = true;
-                };
-                reader.readAsDataURL(file);
-            };
-            input.click();
-        });
+        initChart();
     </script>
 </body>
 </html>
