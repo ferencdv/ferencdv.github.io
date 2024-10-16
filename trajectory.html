@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Interactive Rocket Trajectory Calculator</title>
+    <!-- Include Chart.js via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Include MathJax for math rendering -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+    </script>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background-color: #f4f4f4; 
+        }
+        h1 { 
+            text-align: center; 
+            color: #333;
+        }
+        .container { 
+            display: flex; 
+            flex-wrap: wrap; 
+            justify-content: center; 
+        }
+        .controls, .output { 
+            margin: 20px; 
+        }
+        .controls { 
+            flex: 1 1 300px; 
+            max-width: 400px; 
+            background-color: #fff; 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .output { 
+            flex: 1 1 600px; 
+            max-width: 700px; 
+        }
+        label { 
+            display: block; 
+            margin-top: 15px; 
+        }
+        input[type="range"], input[type="number"] { 
+            width: 100%; 
+            padding: 5px;
+            box-sizing: border-box;
+        }
+        .value { 
+            font-weight: bold; 
+            color: #007BFF;
+        }
+        canvas { 
+            background-color: #fff; 
+            border: 1px solid #ccc; 
+            border-radius: 8px;
+            width: 600px;
+            height: 400px;
+        }
+        button { 
+            margin-top: 20px; 
+            padding: 10px 20px; 
+            font-size: 16px; 
+            cursor: pointer;
+            background-color: #28a745;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+        }
+        button:hover { 
+            background-color: #218838; 
+        }
+        .results { 
+            margin-top: 20px; 
+            background-color: #fff; 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .results p { 
+            margin: 5px 0; 
+            color: #555;
+        }
+        .mathjax { 
+            display: inline; 
+        }
+        .scale-controls {
+            margin-top: 20px;
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .scale-controls h3 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+        .scale-controls label {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Interactive Rocket Trajectory Calculator</h1>
+    <div class="container">
+        <div class="controls">
+            <h2>Adjust Parameters</h2>
+            <label>
+                Launch Angle (\( T_{bo} \) in degrees):
+                <input type="range" id="T_bo" min="0" max="90" step="0.1" value="45" oninput="updateValue('T_bo_value', this.value)">
+                <span class="value" id="T_bo_value">45</span>°
+            </label>
+            <label>
+                Burnout Speed (\( V_{bo} \) in km/s):
+                <input type="range" id="V_bo" min="0" max="8" step="0.01" value="1" oninput="updateValue('V_bo_value', this.value)">
+                <span class="value" id="V_bo_value">1.00</span> km/s
+            </label>
+            <label>
+                Initial Height (\( H_{bo} \) in meters):
+                <input type="range" id="H_bo" min="0" max="1000" step="1" value="0" oninput="updateValue('H_bo_value', this.value)">
+                <span class="value" id="H_bo_value">0</span> m
+            </label>
+            <label>
+                Initial Horizontal Position (\( X_0 \) in meters):
+                <input type="range" id="X_0" min="0" max="1000" step="1" value="0" oninput="updateValue('X_0_value', this.value)">
+                <span class="value" id="X_0_value">0</span> m
+            </label>
+            <label>
+                Range Parameter (\( R_{\text{bmav}} \) in meters):
+                <input type="range" id="R_bmav" min="0" max="1000" step="1" value="0" oninput="updateValue('R_bmav_value', this.value)">
+                <span class="value" id="R_bmav_value">0</span> m
+            </label>
+            <label>
+                Acceleration due to Gravity (\( g \) in m/s²):
+                <input type="range" id="g" min="0.1" max="20" step="0.01" value="9.81" oninput="updateValue('g_value', this.value)">
+                <span class="value" id="g_value">9.81</span> m/s²
+            </label>
+            <button onclick="calculate()">Calculate Trajectory</button>
+            
+            <!-- Scale Controls -->
+            <div class="scale-controls">
+                <h3>Adjust Plot Scale</h3>
+                <label>
+                    X-Axis Minimum (km):
+                    <input type="number" id="x_min" value="0" step="0.1" oninput="applyScale()">
+                </label>
+                <label>
+                    X-Axis Maximum (km):
+                    <input type="number" id="x_max" value="1" step="0.1" oninput="applyScale()">
+                </label>
+                <label>
+                    Y-Axis Minimum (km):
+                    <input type="number" id="y_min" value="0" step="0.1" oninput="applyScale()">
+                </label>
+                <label>
+                    Y-Axis Maximum (km):
+                    <input type="number" id="y_max" value="1" step="0.1" oninput="applyScale()">
+                </label>
+            </div>
+        </div>
+        <div class="output">
+            <canvas id="trajectoryChart" width="600" height="400"></canvas>
+            <div class="results" id="output"></div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Chart.js
+        var ctx = document.getElementById('trajectoryChart').getContext('2d');
+        var trajectoryChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                datasets: [{
+                    label: 'Rocket Trajectory',
+                    data: [],
+                    borderColor: 'red',
+                    fill: false,
+                    pointRadius: 0,
+                    borderWidth: 2,
+                    parsing: false,
+                }]
+            },
+            options: {
+                animation: false,
+                responsive: false, // Prevent chart from resizing
+                scales: {
+                    x: {
+                        type: 'linear',
+                        position: 'bottom',
+                        title: { display: true, text: 'Horizontal Distance (km)' },
+                        beginAtZero: true,
+                        min: 0,
+                        max: 1, // Initial default, will be updated
+                    },
+                    y: {
+                        type: 'linear',
+                        title: { display: true, text: 'Vertical Height (km)' },
+                        beginAtZero: true,
+                        min: 0,
+                        max: 1, // Initial default, will be updated
+                    }
+                }
+            }
+        });
+
+        var animationFrameRequest;
+        var startTime;
+        var totalAnimationTime;
+        var trajectoryData = [];
+
+        function updateValue(id, value) {
+            // For burnout speed, format to two decimal places
+            if (id === 'V_bo_value') {
+                document.getElementById(id).innerText = parseFloat(value).toFixed(2);
+            } else if (id === 'T_bo_value') {
+                document.getElementById(id).innerText = parseFloat(value).toFixed(1);
+            } else {
+                document.getElementById(id).innerText = value;
+            }
+            // Re-render MathJax expressions
+            MathJax.typesetPromise();
+        }
+
+        function applyScale() {
+            var xMin = parseFloat(document.getElementById('x_min').value);
+            var xMax = parseFloat(document.getElementById('x_max').value);
+            var yMin = parseFloat(document.getElementById('y_min').value);
+            var yMax = parseFloat(document.getElementById('y_max').value);
+
+            // Validation
+            if (xMin >= xMax) {
+                alert("X-Axis Minimum must be less than X-Axis Maximum.");
+                return;
+            }
+            if (yMin >= yMax) {
+                alert("Y-Axis Minimum must be less than Y-Axis Maximum.");
+                return;
+            }
+
+            // Update chart scales
+            trajectoryChart.options.scales.x.min = xMin;
+            trajectoryChart.options.scales.x.max = xMax;
+            trajectoryChart.options.scales.y.min = yMin;
+            trajectoryChart.options.scales.y.max = yMax;
+            trajectoryChart.update();
+        }
+
+        function calculate() {
+            // Cancel any existing animation
+            if (animationFrameRequest) {
+                cancelAnimationFrame(animationFrameRequest);
+            }
+            // Reset the chart data
+            trajectoryChart.data.datasets[0].data = [];
+            // Remove existing Apogee Marker if exists
+            trajectoryChart.data.datasets = trajectoryChart.data.datasets.filter(function(dataset) {
+                return dataset.label !== 'Apogee Marker';
+            });
+            trajectoryChart.update();
+
+            // Get input values
+            var T_bo = parseFloat(document.getElementById('T_bo').value);
+            var V_bo_km_s = parseFloat(document.getElementById('V_bo').value); // in km/s
+            var V_bo = V_bo_km_s * 1000; // Convert km/s to m/s
+            var H_bo = parseFloat(document.getElementById('H_bo').value); // in meters
+            var X_0 = parseFloat(document.getElementById('X_0').value); // in meters
+            var R_bmav = parseFloat(document.getElementById('R_bmav').value); // in meters
+            var g = parseFloat(document.getElementById('g').value); // in m/s²
+
+            // Convert angle to radians
+            var T_bo_rad = T_bo * Math.PI / 180;
+
+            // Ballistic Range Calculation R_max
+            var R_max = X_0 + R_bmav;
+
+            // Time of flight t_f using quadratic formula
+            var a = -0.5 * g;
+            var b = V_bo * Math.sin(T_bo_rad);
+            var c = H_bo;
+            var discriminant = b * b - 4 * a * c;
+
+            if (discriminant < 0) {
+                alert("No valid solution for time of flight. Please check the input parameters.");
+                return;
+            }
+
+            var t_f1 = (-b + Math.sqrt(discriminant)) / (2 * a);
+            var t_f2 = (-b - Math.sqrt(discriminant)) / (2 * a);
+            var t_f = Math.max(t_f1, t_f2); // Choose the positive and larger time
+
+            if (t_f <= 0) {
+                alert("Invalid time of flight calculated. Please adjust the input parameters.");
+                return;
+            }
+
+            // Intermediate Time Calculation t_f1 (Total Time in minutes)
+            var t_f1_minutes = t_f / 60;
+
+            // Time of Flight T_mi (rounded to 3 decimal places)
+            var T_mi = Math.round(t_f * 1000) / 1000;
+
+            // Time to Reach Apogee (t_up)
+            var t_up = V_bo * Math.sin(T_bo_rad) / g;
+
+            // Apogee Coordinates (X_apogee, Y_apogee)
+            var X_apogee = X_0 + V_bo * Math.cos(T_bo_rad) * t_up;
+            var Y_apogee = H_bo + V_bo * Math.sin(T_bo_rad) * t_up - 0.5 * g * t_up * t_up;
+            var Y_apogee_adjusted = 1.8 * Y_apogee; // Adjusted according to the given formula
+
+            // Final Range Calculation R
+            var V_cos_theta = V_bo * Math.cos(T_bo_rad);
+            var R = X_0 + V_cos_theta * t_f;
+
+            // Generate trajectory data points
+            var total_time = t_f;
+            var time_steps = 1000; // Increased for smoother curve
+            var dt = total_time / time_steps;
+            trajectoryData = [];
+
+            var maxX = 0;
+            var maxY = 0;
+
+            for (var t = 0; t <= total_time; t += dt) {
+                var x = X_0 + V_bo * Math.cos(T_bo_rad) * t;
+                var y = H_bo + V_bo * Math.sin(T_bo_rad) * t - 0.5 * g * t * t;
+                if (y < 0) y = 0; // Ensure the projectile doesn't go below ground
+                // Convert meters to kilometers
+                x = x / 1000;
+                y = y / 1000;
+                trajectoryData.push({ x: x, y: y, time: t });
+                if (y > maxY) maxY = y;
+                if (x > maxX) maxX = x;
+                if (y === 0 && t > 0) break; // Stop when the projectile hits the ground
+            }
+
+            // Find Apogee Point
+            var apogeeIndex = trajectoryData.reduce((maxIdx, point, idx, arr) => point.y > arr[maxIdx].y ? idx : maxIdx, 0);
+            var apogeePoint = trajectoryData[apogeeIndex];
+            var apogee_x = apogeePoint.x;
+            var apogee_y = apogeePoint.y;
+
+            // Add Apogee Marker Dataset
+            trajectoryChart.data.datasets.push({
+                label: 'Apogee Marker',
+                data: [{ x: apogee_x, y: apogee_y }],
+                backgroundColor: 'red',
+                borderColor: 'red',
+                pointRadius: 5,
+                pointStyle: 'circle',
+                showLine: false,
+            });
+
+            // Update chart scales based on user input or set to default
+            var xMinInput = parseFloat(document.getElementById('x_min').value);
+            var xMaxInput = parseFloat(document.getElementById('x_max').value);
+            var yMinInput = parseFloat(document.getElementById('y_min').value);
+            var yMaxInput = parseFloat(document.getElementById('y_max').value);
+
+            // If user hasn't set custom scales (defaults are 0 and 1), update to fit data
+            if (xMinInput === 0 && xMaxInput === 1) {
+                trajectoryChart.options.scales.x.min = 0;
+                trajectoryChart.options.scales.x.max = Math.ceil(maxX * 1.1); // Add 10% margin
+                document.getElementById('x_max').value = Math.ceil(maxX * 1.1).toFixed(1);
+            }
+
+            if (yMinInput === 0 && yMaxInput === 1) {
+                trajectoryChart.options.scales.y.min = 0;
+                trajectoryChart.options.scales.y.max = Math.ceil(maxY * 1.1); // Add 10% margin
+                document.getElementById('y_max').value = Math.ceil(maxY * 1.1).toFixed(1);
+            }
+
+            // Apply user-defined scales
+            trajectoryChart.options.scales.x.min = xMinInput;
+            trajectoryChart.options.scales.x.max = xMaxInput;
+            trajectoryChart.options.scales.y.min = yMinInput;
+            trajectoryChart.options.scales.y.max = yMaxInput;
+            trajectoryChart.update();
+
+            // Initialize animation variables
+            startTime = null;
+            totalAnimationTime = t_f * 1000; // Convert flight time to milliseconds
+
+            // Reset timer display
+            updateTimerDisplay(0.00);
+
+            // Animation function using requestAnimationFrame
+            function animateTrajectory(timestamp) {
+                if (!startTime) startTime = timestamp;
+                var elapsed = (timestamp - startTime) / 1000; // in seconds
+                if (elapsed > t_f) elapsed = t_f;
+                updateTimerDisplay(elapsed.toFixed(2));
+
+                var progress = elapsed / t_f;
+                if (progress > 1) progress = 1;
+
+                // Calculate the current index based on progress
+                var index = Math.floor(progress * (trajectoryData.length - 1));
+
+                // Update the 'Rocket Trajectory' dataset only
+                trajectoryChart.data.datasets[0].data = trajectoryData.slice(0, index + 1);
+                trajectoryChart.update('none'); // 'none' disables built-in animation
+
+                if (progress < 1) {
+                    animationFrameRequest = requestAnimationFrame(animateTrajectory);
+                } else {
+                    // Animation complete
+                    cancelAnimationFrame(animationFrameRequest);
+                }
+            }
+
+            // Function to update the timer display
+            function updateTimerDisplay(time) {
+                var timerElement = document.getElementById('timer');
+                if (!timerElement) {
+                    // If the timer element doesn't exist, create it
+                    var outputDiv = document.getElementById('output');
+                    var timerHTML = `<p><strong>Elapsed Time:</strong> <span id="timer">0.00</span> seconds</p>`;
+                    outputDiv.innerHTML = timerHTML + outputDiv.innerHTML;
+                }
+                document.getElementById('timer').innerText = time;
+            }
+
+            // Start the animation
+            animationFrameRequest = requestAnimationFrame(animateTrajectory);
+
+            // Display the results (convert distances to kilometers)
+            var outputDiv = document.getElementById('output');
+            outputDiv.innerHTML = `
+                <h2>Results</h2>
+                <p><strong>Ballistic Range \\( R_{\\text{max}} \\):</strong> ${(R_max / 1000).toFixed(2)} kilometers</p>
+                <p><strong>Flight Time \\( t_f \\):</strong> ${t_f.toFixed(4)} seconds</p>
+                <p><strong>Intermediate Time \\( t_{f1} \\):</strong> ${t_f1_minutes.toFixed(4)} minutes</p>
+                <p><strong>Time of Flight \\( T_{mi} \\):</strong> ${T_mi} seconds</p>
+                <p><strong>Apogee Coordinates \\( (X_{\\text{Apogee}}, Y_{\\text{Apogee}}) \\):</strong> (${(X_apogee / 1000).toFixed(2)}, ${(Y_apogee_adjusted / 1000).toFixed(2)}) kilometers</p>
+                <p><strong>Final Range \\( R \\):</strong> ${(R / 1000).toFixed(2)} kilometers</p>
+                <p><strong>Elapsed Time:</strong> <span id="timer">0.00</span> seconds</p>
+            `;
+            // Re-render MathJax expressions
+            MathJax.typesetPromise();
+        }
+
+        // Initial calculation on page load
+        window.onload = function() {
+            calculate();
+        }
+    </script>
+</body>
+</html>
