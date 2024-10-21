@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Ripple Tank Simulation</title>
+    <!-- Link to p5.js library -->
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.4.2/lib/p5.min.js"></script>
+    <style>
+        body {
+            background-color: #222;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        h1 {
+            margin: 20px 0;
+        }
+
+        #controls {
+            margin: 20px auto;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        #controls label {
+            margin-right: 10px;
+        }
+
+        #controls input[type=range] {
+            width: 150px;
+        }
+
+        #controls span {
+            width: 40px;
+            display: inline-block;
+            text-align: left;
+        }
+
+        #legend {
+            position: absolute;
+            top: 100px;
+            right: 20px;
+            color: #fff;
+            text-align: left;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        #toggleButton {
+            margin-top: 10px;
+            padding: 5px 10px;
+            background-color: #444;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+        }
+
+        #toggleButton:hover {
+            background-color: #555;
+        }
+    </style>
+</head>
+<body>
+    <h1>2D Ripple Tank Simulation</h1>
+    <div id="controls">
+        <label for="frequency">Frequency:</label>
+        <input type="range" id="frequency" min="0.01" max="0.1" step="0.005" value="0.05">
+        <span id="freqValue">0.05</span>
+
+        <label for="wavelength">Wavelength:</label>
+        <input type="range" id="wavelength" min="10" max="50" step="1" value="30">
+        <span id="waveValue">30</span>
+
+        <label for="amplitude">Amplitude:</label>
+        <input type="range" id="amplitude" min="5" max="50" step="1" value="20">
+        <span id="ampValue">20</span>
+
+        <button id="toggleButton">Switch to Grayscale</button>
+    </div>
+
+    <script>
+        let sources = [];
+        let frequencySlider, wavelengthSlider, amplitudeSlider;
+        let freqValue, waveValue, ampValue;
+        let useGrayscale = false;
+        let time = 0;
+
+        function setup() {
+            createCanvas(800, 600);
+            pixelDensity(1);  // Set to 1 for better performance in simulation
+            background(0);
+
+            // Initialize two wave sources
+            sources.push(new WaveSource(width * 0.3, height / 2));
+            sources.push(new WaveSource(width * 0.7, height / 2));
+
+            // Get sliders and value displays
+            frequencySlider = select('#frequency');
+            wavelengthSlider = select('#wavelength');
+            amplitudeSlider = select('#amplitude');
+
+            freqValue = select('#freqValue');
+            waveValue = select('#waveValue');
+            ampValue = select('#ampValue');
+
+            // Update value displays
+            frequencySlider.input(() => freqValue.html(frequencySlider.value()));
+            wavelengthSlider.input(() => waveValue.html(wavelengthSlider.value()));
+            amplitudeSlider.input(() => ampValue.html(amplitudeSlider.value()));
+
+            // Toggle button for grayscale
+            let toggleButton = select('#toggleButton');
+            toggleButton.mousePressed(() => {
+                useGrayscale = !useGrayscale;
+                toggleButton.html(useGrayscale ? 'Switch to Color' : 'Switch to Grayscale');
+            });
+        }
+
+        function draw() {
+            background(0);  // Clear the background each frame
+
+            loadPixels();  // Load pixels for manual manipulation
+
+            // Loop through each pixel
+            for (let x = 0; x < width; x++) {
+                for (let y = 0; y < height; y++) {
+                    let totalAmplitude = 0;
+
+                    // Sum up wave contributions from each source
+                    for (let source of sources) {
+                        totalAmplitude += source.getWaveContribution(x, y, time);
+                    }
+
+                    // Normalize the amplitude
+                    let normalized = map(totalAmplitude, -2 * amplitudeSlider.value(), 2 * amplitudeSlider.value(), 0, 1);
+                    normalized = constrain(normalized, 0, 1);
+
+                    // Get color based on amplitude
+                    let col = getColor(normalized);
+
+                    // Set pixel color
+                    let index = (x + y * width) * 4;
+                    pixels[index] = red(col);
+                    pixels[index + 1] = green(col);
+                    pixels[index + 2] = blue(col);
+                    pixels[index + 3] = 255;
+                }
+            }
+
+            updatePixels();  // Update pixels to show the interference pattern
+            time += frequencySlider.value();  // Increment time for animation
+        }
+
+        // Function to handle color mapping based on amplitude
+        function getColor(value) {
+            if (useGrayscale) {
+                // Grayscale mapping
+                let gray = floor(value * 255);
+                return color(gray);
+            } else {
+                // Color mapping: 0 - blue, 1 - red
+                let inter = map(value, 0, 1, 0, 1);
+                return lerpColor(color(0, 0, 255), color(255, 0, 0), inter);
+            }
+        }
+
+        // Class for a wave source
+        class WaveSource {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+            }
+
+            // Calculate wave contribution at a point (px, py) at time t
+            getWaveContribution(px, py, t) {
+                let distance = dist(px, py, this.x, this.y);
+                let wavelength = wavelengthSlider.value();
+                let amplitude = amplitudeSlider.value();
+                return amplitude * sin((TWO_PI / wavelength) * distance - TWO_PI * t);
+            }
+        }
+    </script>
+</body>
+</html>
