@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!--
+        ============================================================
+        Finger-Drums – Browser-Based Drum-Machine (Hover Edition)
+        ------------------------------------------------------------
+        • Plays pads on **hover** (pointer-over), not on click.
+        • Recording bug fixed – every new take is actually captured.
+        • Uses Web-Audio API for synthesis + echo FX.
+        • Single self-contained file: drop it on any web-server or
+          open locally.
+        ============================================================
+    -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Finger-Drums</title>
+
+    <!-- ================  CSS  ================ -->
+    <style>
+        /* ----------  Root-level colour palette  ---------- */
+        :root{
+            --bg1:#10121A;        /* overall background            */
+            --bg2:#1B1E29;        /* pad background (idle state)   */
+            --accent:#14F195;     /* primary neon accent           */
+            --accent-dim:#0da86a; /* dimmed accent (hover/active)  */
+            --text:#E8EAF6;       /* high-contrast foreground text */
+            --danger:#FF4E6D;     /* record button colour          */
+            --danger-dim:#c23a53;
+            font-family:'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+        }
+        html,body{
+            margin:0;
+            background:var(--bg1);
+            color:var(--text);
+            height:100%;
+            display:flex;
+            flex-direction:column;
+        }
+
+        /* ----------  Layout containers  ---------- */
+        .wrapper{
+            max-width:950px;
+            margin:auto;
+            padding:1rem;
+            width:100%;
+            display:flex;
+            flex-direction:column;
+            gap:1.5rem;
+        }
+        .pad-grid{
+            /* Grid of pads – switches to 2-cols on phones            */
+            display:grid;
+            grid-template-columns:repeat(4,1fr);
+            gap:1rem;
+        }
+        .controls{
+            display:flex;
+            flex-wrap:wrap;
+            gap:1rem;
+            align-items:center;
+            justify-content:space-evenly;
+        }
+
+        /* ----------  Drum pad buttons  ---------- */
+        .pad{
+            background:var(--bg2);
+            border:none;
+            border-radius:12px;
+            aspect-ratio:1/1;
+            font-size:1rem;
+            color:var(--text);
+            cursor:pointer;
+            box-shadow:0 0 0 2px var(--bg2),0 0 12px #000 inset;
+            transition:all .12s ease;
+            position:relative;
+            user-select:none;
+        }
+        .pad:before{
+            /* soft neon glow – becomes visible on hover */
+            content:'';
+            position:absolute;
+            inset:0;
+            border-radius:inherit;
+            background:var(--accent-dim);
+            opacity:0;
+            filter:blur(16px);
+            transition:opacity .12s ease;
+            pointer-events:none;
+        }
+        .pad:hover{transform:translateY(-2px);}
+        .pad:hover:before{opacity:.35;}
+        .pad.active{
+            /* class toggled briefly when pad triggers */
+            transform:translateY(0) scale(.97);
+            box-shadow:0 0 0 2px var(--accent),0 0 20px var(--accent);
+        }
+        .pad.active:before{opacity:.7;}
+
+        /* pad caption */
+        .pad span{
+            pointer-events:none;          /* ignore mouse so hover event is on .pad */
+            position:absolute;
+            bottom:8px; right:10px;
+            font-size:.75rem;
+            opacity:.7;
+        }
+
+        /* ----------  Buttons / sliders  ---------- */
+        .btn{
+            padding:.6rem 1.4rem;
+            border:none;
+            border-radius:8px;
+            font-size:.9rem;
+            cursor:pointer;
+            background:var(--accent);
+            color:#002a14;
+            font-weight:600;
+            transition:background .15s ease;
+        }
+        .btn:hover{background:var(--accent-dim);}
+        .btn:disabled{opacity:.4;pointer-events:none;}
+
+        .btn-record{background:var(--danger);}
+        .btn-record:hover{background:var(--danger-dim);}
+
+        .slider-container{
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            gap:.3rem;
+            font-size:.8rem;
+        }
+        input[type=range]{accent-color:var(--accent);}
+
+        /* ----------  Header  ---------- */
+        h1{
+            text-align:center;
+            margin:0;
+            font-size:2rem;
+            font-weight:700;
+            color:var(--accent);
+            letter-spacing:.04em;
+        }
+
+        /* ----------  Responsive  ---------- */
+        @media(max-width:600px){
+            .pad-grid{grid-template-columns:repeat(2,1fr);}
+        }
+    </style>
+</head>
+
+<body>
+<div class="wrapper">
+    <h1>🎛️ Finger-Drums</h1>
+
+    <!-- ==============  8 Drum Pads  ============== -->
+    <div id="padGrid" class="pad-grid">
+        <!-- data-sound attribute maps to synth type -->
+        <button class="pad" data-sound="kick"><span>Kick</span></button>
+        <button class="pad" data-sound="snare"><span>Snare</span></button>
+        <button class="pad" data-sound="hihat"><span>Hi-Hat</span></button>
+        <button class="pad" data-sound="clap"><span>Clap</span></button>
+        <button class="pad" data-sound="tomLow"><span>Tom L</span></button>
+        <button class="pad" data-sound="tomMid"><span>Tom M</span></button>
+        <button class="pad" data-sound="tomHi"><span>Tom H</span></button>
+        <button class="pad" data-sound="perc"><span>Fx</span></button>
+    </div>
+
+    <!-- ==============  Transport / FX  ============== -->
+    <div class="controls">
+        <button id="btnPlay"   class="btn">▶️ Play</button>
+        <button id="btnStop"   class="btn">⏹️ Stop</button>
+        <button id="btnRecord" class="btn btn-record">● Record</button>
+        <button id="btnOverdub"class="btn">➕ Overdub</button>
+        <button id="btnClear"  class="btn">🧹 Clear Loops</button>
+
+        <div class="slider-container">
+            <label for="tempo">Tempo (<span id="tempoVal">120</span> BPM)</label>
+            <input type="range" id="tempo" min="60" max="200" value="120">
+        </div>
+
+        <div class="slider-container">
+            <label for="echo">Echo (<span id="echoVal">0</span> ms)</label>
+            <input type="range" id="echo" min="0" max="600" value="0">
+        </div>
+
+        <!-- simple sampler -->
+        <input type="file" id="fileInput" accept="audio/*" hidden>
+        <button id="btnSample" class="btn">🎙️ Load Sample</button>
+    </div>
+</div>
+
+<!-- ================  JavaScript  ================ -->
+<script>
+/* ------------------------------------------------------------------ *
+   SECTION 1 – Web-Audio initialisation
+   ------------------------------------------------------------------ */
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+const ctx = new AudioCtx();
+
+/* ------------------------------------------------------------------ *
+   SECTION 2 – Global transport & state
+   ------------------------------------------------------------------ */
+let isPlaying   = false;     // is sequencer running?
+let isRecording = false;     // capturing new take?
+let startTime   = 0;         // ctx.currentTime when transport (re-)started
+let tempo       = 120;       // beats-per-minute
+const PPQ       = 4;         // pulses-per-quarter (sub-division resolution)
+let barLength   = 4;         // bars per loop
+let nextNoteTime= 0;         // next scheduled sub-division (seconds)
+const scheduleAhead = 0.1;   // scheduler look-ahead window (seconds)
+const layers = [];           // array of recorded takes – each is [{beatIndex,type},...]
+
+/* ------------------------------------------------------------------ *
+   SECTION 3 – Master gain & echo effect graph
+   ------------------------------------------------------------------ */
+const masterGain = ctx.createGain();
+masterGain.gain.value = 1;
+masterGain.connect(ctx.destination);
+
+const delay = ctx.createDelay(1.0);  // 0-1 s delay line
+const fbGain= ctx.createGain();      // feedback gain node
+fbGain.gain.value = 0;               // disabled by default
+delay.connect(fbGain).connect(delay);
+delay.connect(masterGain);
+
+/* ------------------------------------------------------------------ *
+   SECTION 4 – Drum synthesiser (procedural)
+   ------------------------------------------------------------------ */
+const DrumSynth = {
+    /** Kick – descending sine click */
+    kick(t=ctx.currentTime){
+        const osc  = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type='sine';
+        osc.frequency.setValueAtTime(140,t);
+        osc.frequency.exponentialRampToValueAtTime(55,t+0.12);
+        gain.gain.setValueAtTime(1,t);
+        gain.gain.exponentialRampToValueAtTime(0.001,t+0.12);
+        osc.connect(gain).connect(delay);
+        osc.start(t); osc.stop(t+0.15);
+    },
+    /** Snare – filtered noise + short tone */
+    snare(t=ctx.currentTime){
+        const buf=ctx.createBuffer(1,ctx.sampleRate*0.2,ctx.sampleRate);
+        const d=buf.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
+        const noise=ctx.createBufferSource(); noise.buffer=buf;
+        const bp=ctx.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=1800;
+        const ng=ctx.createGain(); ng.gain.setValueAtTime(1,t); ng.gain.exponentialRampToValueAtTime(0.01,t+0.15);
+        noise.connect(bp).connect(ng).connect(delay);
+        noise.start(t); noise.stop(t+0.2);
+
+        const osc=ctx.createOscillator(); osc.type='triangle'; osc.frequency.setValueAtTime(200,t);
+        const og=ctx.createGain(); og.gain.setValueAtTime(0.7,t); og.gain.exponentialRampToValueAtTime(0.01,t+0.1);
+        osc.connect(og).connect(delay);
+        osc.start(t); osc.stop(t+0.15);
+    },
+    /** Hi-Hat – short high-passed noise */
+    hihat(t=ctx.currentTime){
+        const b=ctx.createBuffer(1,ctx.sampleRate*0.05,ctx.sampleRate);
+        const d=b.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
+        const src=ctx.createBufferSource(); src.buffer=b;
+        const hp=ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=7000;
+        const g=ctx.createGain(); g.gain.setValueAtTime(1,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.05);
+        src.connect(hp).connect(g).connect(delay);
+        src.start(t); src.stop(t+0.06);
+    },
+    /** Clap – three fast snare-like bursts */
+    clap(t=ctx.currentTime){ for(let i=0;i<3;i++) this.snare(t+i*0.015); },
+    /** Tom helpers */
+    tomLow :t=>DrumSynth.tomGeneric(t,110),
+    tomMid :t=>DrumSynth.tomGeneric(t,165),
+    tomHi  :t=>DrumSynth.tomGeneric(t,220),
+    tomGeneric(t,f){
+        const osc=ctx.createOscillator(); osc.type='sine';
+        const g=ctx.createGain();
+        osc.frequency.setValueAtTime(f,t);
+        osc.frequency.exponentialRampToValueAtTime(f*0.7,t+0.25);
+        g.gain.setValueAtTime(1,t);
+        g.gain.exponentialRampToValueAtTime(0.001,t+0.25);
+        osc.connect(g).connect(delay);
+        osc.start(t); osc.stop(t+0.3);
+    },
+    /** Perc FX – down-swept filtered noise */
+    perc(t=ctx.currentTime){
+        const b=ctx.createBuffer(1,ctx.sampleRate*0.4,ctx.sampleRate);
+        const d=b.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
+        const src=ctx.createBufferSource(); src.buffer=b;
+        const lp=ctx.createBiquadFilter(); lp.type='lowpass';
+        lp.frequency.setValueAtTime(8000,t);
+        lp.frequency.exponentialRampToValueAtTime(300,t+0.4);
+        const g=ctx.createGain(); g.gain.setValueAtTime(1,t);
+        g.gain.exponentialRampToValueAtTime(0.001,t+0.4);
+        src.connect(lp).connect(g).connect(delay);
+        src.start(t); src.stop(t+0.4);
+    }
+};
+
+/* ------------------------------------------------------------------ *
+   SECTION 5 – Pad interaction (HOVER-to-play)
+   ------------------------------------------------------------------ */
+const padGrid=document.getElementById('padGrid');
+padGrid.addEventListener('pointerover',e=>{
+    const pad=e.target.closest('.pad');
+    if(!pad) return;
+    triggerPad(pad);
+});
+
+/** Play sound + flash pad + record event (if armed) */
+function triggerPad(pad){
+    const type=pad.dataset.sound;
+    playSound(type);
+    if(isRecording) recordEvent(type);
+    pad.classList.add('active');
+    setTimeout(()=>pad.classList.remove('active'),100);
+}
+
+/** Choose synthesis or user sample */
+const customSamples={};
+function playSound(type,t=ctx.currentTime){
+    (customSamples[type] || DrumSynth[type])(t);
+}
+
+/* ------------------------------------------------------------------ *
+   SECTION 6 – Buttons & sliders
+   ------------------------------------------------------------------ */
+document.getElementById('btnPlay'   ).onclick=()=>{ if(!isPlaying) startTransport(); };
+document.getElementById('btnStop'   ).onclick= stopTransport;
+document.getElementById('btnRecord' ).onclick= toggleRecording;
+document.getElementById('btnOverdub').onclick= ()=>{ if(!isPlaying) startTransport(); isRecording=true; setRecUI(true); };
+document.getElementById('btnClear'  ).onclick= ()=> layers.length=0;
+
+document.getElementById('tempo').oninput=e=>{
+    tempo=+e.target.value;
+    document.getElementById('tempoVal').textContent=tempo;
+};
+document.getElementById('echo').oninput=e=>{
+    const v=+e.target.value;
+    document.getElementById('echoVal').textContent=v;
+    delay.delayTime.value=v/1000;
+    fbGain.gain.value=v?0.4:0;
+};
+
+/* ------------------------------------------------------------------ *
+   SECTION 7 – Simple sampler (replace any pad) 
+   ------------------------------------------------------------------ */
+let armedPad=null;  // pad awaiting sample
+padGrid.addEventListener('contextmenu',e=>{
+    const pad=e.target.closest('.pad');
+    if(!pad) return;
+    e.preventDefault();            // keep browser menu from appearing
+    armedPad=pad;
+    for(const btn of padGrid.children) btn.classList.remove('armed');
+    pad.classList.add('armed');
+});
+document.getElementById('btnSample').onclick=()=>{
+    if(!armedPad) return alert('Right-click a pad first to pick a target.');
+    document.getElementById('fileInput').click();
+};
+document.getElementById('fileInput').onchange=async e=>{
+    const f=e.target.files[0]; if(!f) return;
+    const buf=await f.arrayBuffer();
+    const audio=await ctx.decodeAudioData(buf);
+    const type=armedPad.dataset.sound;
+    customSamples[type]=t=>{
+        const src=ctx.createBufferSource(); src.buffer=audio;
+        src.connect(delay); src.start(t);
+    };
+    armedPad.querySelector('span').textContent='Sample';
+    armedPad.classList.remove('armed');
+    armedPad=null;
+};
+
+/* ------------------------------------------------------------------ *
+   SECTION 8 – Recording logic
+   ------------------------------------------------------------------ */
+let currentTake=[];  // holds hits for active recording pass
+
+function recordEvent(type){
+    /* Convert currentTime to quantised beat-index */
+    const beatDur=60/tempo/PPQ;
+    const elapsed=ctx.currentTime-startTime;
+    const beatIndex=Math.round(elapsed/beatDur);
+    currentTake.push({beatIndex,type});
+}
+
+function toggleRecording(){
+    if(isRecording){ stopRecording(); }
+    else            { startRecording(); }
+}
+
+/** Begin new take – existing layers keep playing so you can overdub */
+function startRecording(){
+    currentTake=[];
+    isRecording=true;
+    setRecUI(true);
+    if(!isPlaying) startTransport();   // auto-start if stopped
+}
+
+/** Close take – push to layers if not empty */
+function stopRecording(){
+    isRecording=false;
+    if(currentTake.length) layers.push(currentTake);
+    currentTake=[];
+    setRecUI(false);
+}
+
+/* Helper – switch record button UI */
+function setRecUI(state){
+    const btn=document.getElementById('btnRecord');
+    btn.textContent=state?'⏸️ Rec':'● Record';
+}
+
+/* ------------------------------------------------------------------ *
+   SECTION 9 – Transport scheduler
+   ------------------------------------------------------------------ */
+let schedID;
+function startTransport(){
+    if(ctx.state==='suspended') ctx.resume();
+    nextNoteTime=ctx.currentTime+0.05;   // start just ahead of now
+    startTime   =ctx.currentTime;
+    isPlaying   =true;
+    schedID     =setInterval(scheduler,25);
+}
+function stopTransport(){
+    isPlaying=false;
+    clearInterval(schedID);
+}
+
+/** Schedule events slightly ahead of playback (“ticker”) */
+function scheduler(){
+    const beatDur=60/tempo/PPQ;
+    while(nextNoteTime < ctx.currentTime + scheduleAhead){
+        const step=Math.round((nextNoteTime-startTime)/beatDur);
+        layers.forEach(take=>{
+            take.filter(ev=>ev.beatIndex%(barLength*PPQ)===step%(barLength*PPQ))
+                .forEach(ev=>playSound(ev.type,nextNoteTime));
+        });
+        nextNoteTime+=beatDur;
+    }
+}
+</script>
+</body>
+</html>
