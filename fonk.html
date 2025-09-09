@@ -6,10 +6,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     /* ===================================================================
-       VISUAL DESIGN
-       - Brazilian Phonk vibe with neon mint, violet and gold accents
-       - Dub techno section gets darker glass cards and vertical sliders
-       - Real sliders (rotated ranges) with glowing thumbs
+       VISUAL DESIGN + LAYOUT (UPDATED)
+       - Single-page layout (no horizontal slide rail)
+       - Transport & Presets sits ABOVE Dub Techno controls
+       - Four recording decks (A–D) with Rec/Stop/Play/Loop/Save/Load
+       - Mobile-first, responsive grids, sticky transport on phones
        =================================================================== */
 
     :root{
@@ -73,7 +74,7 @@
     .beam.b{ background: radial-gradient(closest-side, rgba(99,255,195,.55), rgba(99,255,195,.08), transparent 70%); animation: auroraB 16s ease-in-out infinite; top: 30%; left: 40%; }
     .beam.c{ background: radial-gradient(closest-side, rgba(255,211,105,.45), rgba(255,211,105,.06), transparent 70%); animation: auroraA 18s ease-in-out infinite; top: 70%; left: 10%; }
 
-    .wrap{ position: relative; z-index: 2; max-width: 1280px; margin: 28px auto 80px; padding: 0 18px; }
+    .wrap{ position: relative; z-index: 2; max-width: 1280px; margin: 28px auto 90px; padding: 0 18px; }
 
     /* Cards */
     .card{
@@ -108,20 +109,6 @@
     .btn.primary{ background: linear-gradient(180deg, rgba(99,255,195,.25), rgba(99,255,195,.10)); border-color: rgba(99,255,195,.55); color: #04140e; text-shadow: 0 1px 0 rgba(255,255,255,.4); }
     .btn.red{ background: linear-gradient(180deg, rgba(255,88,166,.25), rgba(255,88,166,.08)); border-color: rgba(255,88,166,.55); color: #2a0e1e; }
     .btn.small{ padding: 6px 10px; font-size: 12px; border-radius: 8px; }
-
-    /* Layout: left controls + right analyzer column */
-    .grid{ display:grid; grid-template-columns: 3fr 1.2fr; gap: 14px; margin-bottom: 14px; }
-    @media (max-width: 1100px){ .grid{ grid-template-columns: 1fr; } }
-
-    /* Transport row */
-    .transport{ display:grid; grid-template-columns: auto auto 1fr; gap: 12px; align-items:center; margin-bottom: 12px; }
-    .transport .left, .transport .center, .transport .right{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-    .transport .right{ justify-content:flex-end; }
-
-    select, input[type="number"], input[type="text"]{
-      background: rgba(255,255,255,0.06); border: 1px solid var(--border); color: var(--text);
-      padding: 8px 10px; border-radius: 10px; outline:none; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
-    }
 
     /* Section titles inside cards */
     .sectionTitle{
@@ -171,10 +158,16 @@
       cursor: pointer;
     }
 
-    /* Analyzer card */
-    .analyzer{ position:relative; min-height: 160px; display:grid; place-items:center; overflow:hidden; }
-    .analyzer canvas{ width: 100%; height: 160px; display:block; filter: drop-shadow(0 6px 18px rgba(0,0,0,.55)); }
-    .badge{ position:absolute; top:10px; right:10px; padding: 4px 8px; font-size: 11px; border: 1px solid var(--border); border-radius: 999px; background: rgba(0,0,0,.25); color: var(--muted); }
+    /* Analyzer card (unchanged, now sits to the right on wide screens) */
+    .analyzer{
+      display:grid; gap: 10px; align-items: stretch;
+      min-height: 160px; overflow:hidden;
+    }
+    .meter{ position:relative; background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03)); border:1px solid var(--border); border-radius:12px; padding:6px; }
+    .meter canvas{ width: 100%; height: 120px; display:block; filter: drop-shadow(0 6px 18px rgba(0,0,0,.55)); }
+    .meter.tall canvas{ height: 160px; }
+    .meter.sm canvas{ height: 80px; }
+    .badge{ position:absolute; top:8px; right:10px; padding: 4px 8px; font-size: 11px; border: 1px solid var(--border); border-radius: 999px; background: rgba(0,0,0,.25); color: var(--muted); }
 
     /* Sequencer grid */
     .seq{ display:grid; gap: 10px; }
@@ -199,6 +192,60 @@
 
     .foot{ margin-top: 20px; color: var(--muted); font-size: 12px; text-align:center; }
     .glow{ color: var(--mint); text-shadow: 0 0 14px rgba(99,255,195,.65); }
+
+    /* ========================= NEW PAGE LAYOUT ========================== */
+    .grid2{ display:grid; grid-template-columns: 2fr 1fr; gap: 14px; margin-bottom: 14px; }
+    @media (max-width: 1100px){ .grid2{ grid-template-columns: 1fr; } }
+
+    .leftCol{ display:grid; gap:14px; }
+
+    /* Transport layout: left/center/right areas that stack on mobile */
+    .transport {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: 1fr;
+    }
+    @media (min-width: 900px){
+      .transport { grid-template-columns: 1.1fr 1.2fr 1.1fr; align-items: start; }
+    }
+    /* Make the big three sliders shrink nicely on small screens */
+    .trio { display:flex; gap:14px; flex-wrap:wrap; width:100%; }
+    .trio .block { display:grid; width:min(200px, 100%); align-items:center; }
+
+    /* Sticky transport card to keep controls reachable on phones */
+    .stickyTop { position: sticky; top: 8px; z-index: 4; }
+
+    /* Decks grid */
+    .decksGrid{ display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+    .deck{
+      display:grid; gap:10px;
+      grid-template-rows: auto auto auto auto auto;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
+      box-shadow: var(--shadow);
+      padding: 12px;
+    }
+    .deckHeader{ font-weight: 900; letter-spacing:.5px; text-transform: uppercase; font-size: 12px; color:#dfe3ff; }
+    .deckControls, .deckActions, .deckStatus { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .deckStatus{ justify-content: space-between; color: var(--muted); font-size: 12px; }
+    .deckRow{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .deckRow .vlabel{ width:auto; }
+    .deckRow input[type="range"]{
+      appearance:none; width:160px; height:10px; border-radius:8px;
+      background:linear-gradient(90deg, rgba(154,125,255,.45), rgba(99,255,195,.45)); outline:none;
+    }
+
+    /* Inputs */
+    select, input[type="number"], input[type="text"]{
+      background: rgba(255,255,255,0.06); border: 1px solid var(--border); color: var(--text);
+      padding: 8px 10px; border-radius: 10px; outline:none; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+    }
+
+    /* Hide on very small screens if needed (we keep analyzers visible by default) */
+    @media (max-width: 520px){
+      .meter.tall canvas{ height: 120px; }
+    }
   </style>
 </head>
 <body>
@@ -225,252 +272,471 @@
       </div>
     </div>
 
-    <!-- Controls + Analyzer -->
-    <div class="grid">
-      <div class="card">
-        <!-- Transport / Presets -->
-        <div class="transport">
-          <div class="left">
-            <button id="nextSongBtn" class="btn" title="Create a new randomized groove and play it">🎲 Next Song</button>
-            <select id="presetSelect" title="Load a preset kit/pattern">
-              <option value="classic">Preset: Classic Baile</option>
-              <option value="rave">Preset: Rave Phonk</option>
-              <option value="dark">Preset: Dark Alley</option>
-              <option value="sunset">Preset: Sunset Litoral</option>
-              <option value="ncts">Preset: NCTS — NEXT (approx)</option>
-              <option value="dubcity">Preset: Dub City (deep chords)</option>
+    <!-- Controls + Analyzer (single page, two-column on wide, stacked on mobile) -->
+    <div class="grid2">
+      <!-- LEFT COLUMN -->
+      <div class="leftCol">
+
+        <!-- Transport & Presets (sticky on small screens) -->
+        <div class="card stickyTop">
+          <div class="sectionTitle">Transport & presets</div>
+          <div class="transport">
+            <!-- Left: Song generator & preset loader -->
+            <div>
+              <div class="deckRow" style="margin-bottom:8px;">
+                <button id="nextSongBtn" class="btn" title="Create a new randomized groove and play it">🎲 Next Song</button>
+              </div>
+              <div class="deckRow">
+                <select id="presetSelect" title="Load a preset kit/pattern">
+                  <option value="classic">Preset: Classic Baile</option>
+                  <option value="rave">Preset: Rave Phonk</option>
+                  <option value="dark">Preset: Dark Alley</option>
+                  <option value="sunset">Preset: Sunset Litoral</option>
+                  <option value="ncts">Preset: NCTS — NEXT (approx)</option>
+                  <option value="dubcity">Preset: Dub City (deep chords)</option>
+                </select>
+                <button id="loadPresetBtn" class="btn small">Load</button>
+              </div>
+            </div>
+
+            <!-- Center: BPM / Swing / Master volume -->
+            <div style="display:flex; flex-direction:column; gap:10px;">
+              <div class="vcard" style="grid-template-rows:auto auto auto auto;">
+                <div class="trio">
+                  <div class="block">
+                    <div class="vlabel">BPM</div>
+                    <input id="bpm" type="range" min="90" max="200" step="1" value="160">
+                    <div class="vread" id="bpmVal">160</div>
+                  </div>
+                  <div class="block">
+                    <div class="vlabel">Swing</div>
+                    <input id="swing" type="range" min="0" max="0.6" step="0.01" value="0.12">
+                    <div class="vread" id="swingVal">0.12</div>
+                  </div>
+                  <div class="block">
+                    <div class="vlabel">Master</div>
+                    <input id="master" type="range" min="0" max="1" step="0.01" value="0.90">
+                    <div class="vread" id="masterVal">0.90</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: Musical helpers and Save/Load/Clear pattern -->
+            <div>
+              <div class="vcard" style="grid-template-rows:auto auto auto auto;">
+                <div class="deckRow">
+                  <div class="vlabel">Bass Root</div>
+                  <select id="keySel">
+                    <option value="36">C</option><option value="37">C# / Db</option><option value="38">D</option><option value="39">D# / Eb</option>
+                    <option value="40" selected>E</option><option value="41">F</option><option value="42">F# / Gb</option><option value="43">G</option>
+                    <option value="44">G# / Ab</option><option value="45">A</option><option value="46">A# / Bb</option><option value="47">B</option>
+                  </select>
+
+                  <div class="vlabel">Scale</div>
+                  <select id="scaleSel">
+                    <option value="minor" selected>Minor</option>
+                    <option value="phrygian">Phrygian</option>
+                  </select>
+
+                  <div class="vlabel">Sidechain</div>
+                  <input id="duck" type="range" min="0" max="1" step="0.01" value="0.45" style="width:140px;">
+                  <div class="vread" id="duckVal">0.45</div>
+                </div>
+
+                <div class="deckRow" style="margin-top:8px;">
+                  <button id="saveBtn" class="btn">💾 Save Pattern</button>
+                  <button id="loadBtn" class="btn">📂 Load Pattern</button>
+                  <button id="clearBtn" class="btn">🧹 Clear</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dub Techno controls (moved directly below Transport) -->
+        <div class="card">
+          <div class="sectionTitle">Dub techno controls</div>
+
+          <!-- High level chord settings -->
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin: 6px 2px;">
+            <div class="vlabel">Dub Root</div>
+            <select id="dubKeySel">
+              <option value="48">C3</option><option value="49">C#3</option><option value="50">D3</option><option value="51">D#3</option>
+              <option value="52" selected>E3</option><option value="53">F3</option><option value="54">F#3</option><option value="55">G3</option>
+              <option value="56">G#3</option><option value="57">A3</option><option value="58">A#3</option><option value="59">B3</option>
             </select>
-            <button id="loadPresetBtn" class="btn small">Load</button>
+
+            <div class="vlabel">Chord Type</div>
+            <select id="chordTypeSel">
+              <option value="min7" selected>min7</option>
+              <option value="min">minor</option>
+              <option value="maj">major</option>
+              <option value="sus2">sus2</option>
+              <option value="sus4">sus4</option>
+            </select>
+
+            <div class="vlabel">Gate</div>
+            <input id="chordGate" type="range" min="0.08" max="0.6" step="0.01" value="0.22" style="width:160px;">
+            <div class="vread" id="chordGateVal">0.22s</div>
           </div>
 
-          <!-- Transport helpers -->
-          <div class="center" style="gap:10px; flex-wrap: wrap;">
-            <div class="vcard" style="grid-template-rows:auto auto auto auto; min-width:540px; width:auto;">
-              <div style="display:flex; gap:14px; flex-wrap:wrap;">
-                <div style="display:grid; width:160px; align-items:center;">
-                  <div class="vlabel">BPM</div>
-                  <input id="bpm" type="range" min="90" max="200" step="1" value="160"
-                         style="appearance:none; width:100%; height: 10px; border-radius: 8px;
-                                background:linear-gradient(90deg, rgba(154,125,255,.45), rgba(99,255,195,.45));
-                                outline:none;">
-                  <div class="vread" id="bpmVal">160</div>
-                </div>
-                <div style="display:grid; width:160px; align-items:center;">
-                  <div class="vlabel">Swing</div>
-                  <input id="swing" type="range" min="0" max="0.6" step="0.01" value="0.12"
-                         style="appearance:none; width:100%; height: 10px; border-radius: 8px;
-                                background:linear-gradient(90deg, rgba(154,125,255,.45), rgba(99,255,195,.45));
-                                outline:none;">
-                  <div class="vread" id="swingVal">0.12</div>
-                </div>
-                <div style="display:grid; width:160px; align-items:center;">
-                  <div class="vlabel">Master</div>
-                  <input id="master" type="range" min="0" max="1" step="0.01" value="0.90"
-                         style="appearance:none; width:100%; height: 10px; border-radius: 8px;
-                                background:linear-gradient(90deg, rgba(154,125,255,.45), rgba(99,255,195,.45));
-                                outline:none;">
-                  <div class="vread" id="masterVal">0.90</div>
-                </div>
-              </div>
+          <!-- Deck A -->
+          <div class="vstack" aria-label="Dub Techno Stack">
+            <div class="vcard" aria-label="Dub delay mix">
+              <div class="vlabel">Dub Mix</div>
+              <div class="vslider-wrap"><input id="dubMix" class="vslider" type="range" min="0" max="1" step="0.01" value="0.35"></div>
+              <div class="vread" id="dubMixVal">0.35</div>
+            </div>
+
+            <div class="vcard" aria-label="Dub delay feedback">
+              <div class="vlabel">Dub FB</div>
+              <div class="vslider-wrap"><input id="dubFb" class="vslider" type="range" min="0" max="0.98" step="0.01" value="0.55"></div>
+              <div class="vread" id="dubFbVal">0.55</div>
+            </div>
+
+            <div class="vcard" aria-label="Dub delay time">
+              <div class="vlabel">Dub Time</div>
+              <div class="vslider-wrap"><input id="dubTime" class="vslider" type="range" min="0.15" max="1.1" step="0.01" value="0.45"></div>
+              <div class="vread" id="dubTimeVal">0.45s</div>
+            </div>
+
+            <div class="vcard" aria-label="Dub delay color">
+              <div class="vlabel">Dub Color</div>
+              <div class="vslider-wrap"><input id="dubColor" class="vslider" type="range" min="800" max="10000" step="1" value="3500"></div>
+              <div class="vread" id="dubColorVal">3.5k</div>
+            </div>
+
+            <div class="vcard" aria-label="Drums/chords send to dub">
+              <div class="vlabel">Global→Dub</div>
+              <div class="vslider-wrap"><input id="drumsSend" class="vslider" type="range" min="0" max="1" step="0.01" value="0.30"></div>
+              <div class="vread" id="drumsSendVal">0.30</div>
+            </div>
+
+            <div class="vcard" aria-label="Chord filter cutoff">
+              <div class="vlabel">Chord Cut</div>
+              <div class="vslider-wrap"><input id="chordCut" class="vslider" type="range" min="400" max="8000" step="1" value="1800"></div>
+              <div class="vread" id="chordCutVal">1.8k</div>
+            </div>
+
+            <div class="vcard" aria-label="Chord resonance">
+              <div class="vlabel">Chord Res</div>
+              <div class="vslider-wrap"><input id="chordRes" class="vslider" type="range" min="0.1" max="18" step="0.1" value="0.7"></div>
+              <div class="vread" id="chordResVal">0.7</div>
+            </div>
+
+            <div class="vcard" aria-label="LFO rate">
+              <div class="vlabel">LFO Rate</div>
+              <div class="vslider-wrap"><input id="lfoRate" class="vslider" type="range" min="0.05" max="3.0" step="0.01" value="0.25"></div>
+              <div class="vread" id="lfoRateVal">0.25Hz</div>
+            </div>
+
+            <div class="vcard" aria-label="LFO amount">
+              <div class="vlabel">LFO Amt</div>
+              <div class="vslider-wrap"><input id="lfoAmt" class="vslider" type="range" min="0" max="3000" step="1" value="600"></div>
+              <div class="vread" id="lfoAmtVal">600</div>
+            </div>
+
+            <div class="vcard" aria-label="Detune">
+              <div class="vlabel">Detune</div>
+              <div class="vslider-wrap"><input id="detune" class="vslider" type="range" min="0" max="20" step="0.1" value="7"></div>
+              <div class="vread" id="detuneVal">7¢</div>
+            </div>
+
+            <div class="vcard" aria-label="Freeze dub echo" style="min-height: 120px;">
+              <div class="vlabel">Freeze</div>
+              <button id="dubFreezeBtn" class="btn small" title="Infinite dub loop">∞ Hold</button>
+              <div class="vread" id="freezeState">off</div>
             </div>
           </div>
 
-          <!-- Musical helpers -->
-          <div class="right">
-            <div class="vcard" style="grid-template-rows:auto auto auto auto; min-width: 340px;">
-              <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:center;">
-                <div class="vlabel">Bass Root</div>
-                <select id="keySel">
-                  <option value="36">C</option><option value="37">C# / Db</option><option value="38">D</option><option value="39">D# / Eb</option>
-                  <option value="40" selected>E</option><option value="41">F</option><option value="42">F# / Gb</option><option value="43">G</option>
-                  <option value="44">G# / Ab</option><option value="45">A</option><option value="46">A# / Bb</option><option value="47">B</option>
-                </select>
+          <!-- Dub extras -->
+          <div class="sectionTitle">Dub extras (tape & motion)</div>
+          <div class="vstack" aria-label="Dub Extras">
+            <div class="vcard"><div class="vlabel">Dub HP</div>
+              <div class="vslider-wrap"><input id="dubHP" class="vslider" type="range" min="20" max="1000" step="1" value="180"></div>
+              <div class="vread" id="dubHPVal">180Hz</div>
+            </div>
 
-                <div class="vlabel">Scale</div>
-                <select id="scaleSel">
-                  <option value="minor" selected>Minor</option>
-                  <option value="phrygian">Phrygian</option>
-                </select>
+            <div class="vcard"><div class="vlabel">Dub Drive</div>
+              <div class="vslider-wrap"><input id="dubDrive" class="vslider" type="range" min="0" max="400" step="1" value="80"></div>
+              <div class="vread" id="dubDriveVal">80</div>
+            </div>
 
-                <div class="vlabel">Sidechain</div>
-                <input id="duck" type="range" min="0" max="1" step="0.01" value="0.45"
-                       style="appearance:none; width:140px; height: 10px; border-radius: 8px;
-                              background:linear-gradient(90deg, rgba(154,125,255,.45), rgba(99,255,195,.45));
-                              outline:none;">
-                <div class="vread" id="duckVal">0.45</div>
-              </div>
+            <div class="vcard"><div class="vlabel">Pan Amt</div>
+              <div class="vslider-wrap"><input id="panAmt" class="vslider" type="range" min="0" max="1" step="0.01" value="0.70"></div>
+              <div class="vread" id="panAmtVal">0.70</div>
+            </div>
 
-              <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:10px;">
-                <button id="saveBtn" class="btn">💾 Save Pattern</button>
-                <button id="loadBtn" class="btn">📂 Load Pattern</button>
-                <button id="clearBtn" class="btn">🧹 Clear</button>
-              </div>
+            <div class="vcard"><div class="vlabel">Pan Rate</div>
+              <div class="vslider-wrap"><input id="panRate" class="vslider" type="range" min="0.05" max="3" step="0.01" value="0.40"></div>
+              <div class="vread" id="panRateVal">0.40Hz</div>
+            </div>
+
+            <div class="vcard"><div class="vlabel">Wow Rate</div>
+              <div class="vslider-wrap"><input id="wowRate" class="vslider" type="range" min="0.05" max="6" step="0.01" value="1.20"></div>
+              <div class="vread" id="wowRateVal">1.20Hz</div>
+            </div>
+
+            <div class="vcard"><div class="vlabel">Wow Amt</div>
+              <div class="vslider-wrap"><input id="wowAmt" class="vslider" type="range" min="0" max="12" step="0.1" value="3.0"></div>
+              <div class="vread" id="wowAmtVal">3.0ms</div>
+            </div>
+
+            <div class="vcard"><div class="vlabel">Duck Dub</div>
+              <div class="vslider-wrap"><input id="duckDub" class="vslider" type="range" min="0" max="1" step="0.01" value="0.60"></div>
+              <div class="vread" id="duckDubVal">0.60</div>
+            </div>
+
+            <div class="vcard"><div class="vlabel">Hiss</div>
+              <div class="vslider-wrap"><input id="hiss" class="vslider" type="range" min="0" max="0.2" step="0.001" value="0.02"></div>
+              <div class="vread" id="hissVal">0.02</div>
+            </div>
+          </div>
+
+          <div class="sectionTitle">Chord space (sends / chorus / envelope)</div>
+          <div class="vstack" aria-label="Chord Space">
+            <div class="vcard"><div class="vlabel">Chords→Dub</div>
+              <div class="vslider-wrap"><input id="chDubSend" class="vslider" type="range" min="0" max="1" step="0.01" value="0.25"></div>
+              <div class="vread" id="chDubSendVal">0.25</div>
+            </div>
+
+            <div class="vcard"><div class="vlabel">Chords→Rev</div>
+              <div class="vslider-wrap"><input id="chRevSend" class="vslider" type="range" min="0" max="1" step="0.01" value="0.20"></div>
+              <div class="vread" id="chRevSendVal">0.20</div>
+            </div>
+
+            <div class="vcard"><div class="vlabel">Env Amt</div>
+              <div class="vslider-wrap"><input id="envAmt" class="vslider" type="range" min="0" max="4000" step="1" value="800"></div>
+              <div class="vread" id="envAmtVal">800Hz</div>
+            </div>
+
+            <div class="vcard"><div class="vlabel">Env Decay</div>
+              <div class="vslider-wrap"><input id="envDec" class="vslider" type="range" min="0.05" max="1.5" step="0.01" value="0.50"></div>
+              <div class="vread" id="envDecVal">0.50s</div>
+            </div>
+
+            <div class="vcard"><div class="vlabel">Chorus Mix</div>
+              <div class="vslider-wrap"><input id="chorusMix" class="vslider" type="range" min="0" max="1" step="0.01" value="0.35"></div>
+              <div class="vread" id="chorusMixVal">0.35</div>
+            </div>
+
+            <div class="vcard"><div class="vlabel">Chorus Rate</div>
+              <div class="vslider-wrap"><input id="chorusRate" class="vslider" type="range" min="0.05" max="5" step="0.01" value="0.80"></div>
+              <div class="vread" id="chorusRateVal">0.80Hz</div>
+            </div>
+
+            <div class="vcard"><div class="vlabel">Chorus Depth</div>
+              <div class="vslider-wrap"><input id="chorusDepth" class="vslider" type="range" min="0" max="12" step="0.1" value="6.0"></div>
+              <div class="vread" id="chorusDepthVal">6.0ms</div>
             </div>
           </div>
         </div>
 
-        <!-- Master FX -->
-        <div class="sectionTitle">Master effects</div>
-        <div class="vstack" aria-label="Master Effects">
-          <div class="vcard" aria-label="Tone low-pass">
-            <div class="vlabel">Tone</div>
-            <div class="vslider-wrap">
-              <input id="tone" class="vslider" type="range" min="200" max="18000" step="1" value="13000" aria-label="Low-pass cutoff (Hz)">
+        <!-- Master Effects (kept, sits below Dub Techno) -->
+        <div class="card">
+          <div class="sectionTitle">Master effects</div>
+          <div class="vstack" aria-label="Master Effects">
+            <div class="vcard" aria-label="Tone low-pass">
+              <div class="vlabel">Tone</div>
+              <div class="vslider-wrap">
+                <input id="tone" class="vslider" type="range" min="200" max="18000" step="1" value="13000" aria-label="Low-pass cutoff (Hz)">
+              </div>
+              <div class="vread" id="toneVal">13.0k</div>
             </div>
-            <div class="vread" id="toneVal">13.0k</div>
-          </div>
 
-          <div class="vcard" aria-label="Drive / Grit">
-            <div class="vlabel">Drive</div>
-            <div class="vslider-wrap">
-              <input id="drive" class="vslider" type="range" min="0" max="400" step="1" value="120" aria-label="Distortion amount">
+            <div class="vcard" aria-label="Drive / Grit">
+              <div class="vlabel">Drive</div>
+              <div class="vslider-wrap">
+                <input id="drive" class="vslider" type="range" min="0" max="400" step="1" value="120" aria-label="Distortion amount">
+              </div>
+              <div class="vread" id="driveVal">120</div>
             </div>
-            <div class="vread" id="driveVal">120</div>
-          </div>
 
-          <div class="vcard" aria-label="Reverb">
-            <div class="vlabel">Reverb</div>
-            <div class="vslider-wrap">
-              <input id="reverb" class="vslider" type="range" min="0" max="1" step="0.01" value="0.25" aria-label="Reverb mix">
+            <div class="vcard" aria-label="Reverb">
+              <div class="vlabel">Reverb</div>
+              <div class="vslider-wrap">
+                <input id="reverb" class="vslider" type="range" min="0" max="1" step="0.01" value="0.25" aria-label="Reverb mix">
+              </div>
+              <div class="vread" id="reverbVal">0.25</div>
             </div>
-            <div class="vread" id="reverbVal">0.25</div>
-          </div>
 
-          <div class="vcard" aria-label="Delay">
-            <div class="vlabel">Delay</div>
-            <div class="vslider-wrap">
-              <input id="delayMix" class="vslider" type="range" min="0" max="0.9" step="0.01" value="0.18" aria-label="Delay mix">
+            <div class="vcard" aria-label="Delay">
+              <div class="vlabel">Delay</div>
+              <div class="vslider-wrap">
+                <input id="delayMix" class="vslider" type="range" min="0" max="0.9" step="0.01" value="0.18" aria-label="Delay mix">
+              </div>
+              <div class="vread" id="delayMixVal">0.18</div>
             </div>
-            <div class="vread" id="delayMixVal">0.18</div>
-          </div>
 
-          <div class="vcard" aria-label="Feedback">
-            <div class="vlabel">Feedback</div>
-            <div class="vslider-wrap">
-              <input id="delayFbSlider" class="vslider" type="range" min="0" max="0.9" step="0.01" value="0.32" aria-label="Delay feedback">
+            <div class="vcard" aria-label="Feedback">
+              <div class="vlabel">Feedback</div>
+              <div class="vslider-wrap">
+                <input id="delayFbSlider" class="vslider" type="range" min="0" max="0.9" step="0.01" value="0.32" aria-label="Delay feedback">
+              </div>
+              <div class="vread" id="delayFbVal">0.32</div>
             </div>
-            <div class="vread" id="delayFbVal">0.32</div>
-          </div>
 
-          <div class="vcard" aria-label="Delay Time">
-            <div class="vlabel">Time</div>
-            <div class="vslider-wrap">
-              <input id="delayTime" class="vslider" type="range" min="0.08" max="0.6" step="0.01" value="0.24" aria-label="Delay time (seconds)">
+            <div class="vcard" aria-label="Delay Time">
+              <div class="vlabel">Time</div>
+              <div class="vslider-wrap">
+                <input id="delayTime" class="vslider" type="range" min="0.08" max="0.6" step="0.01" value="0.24" aria-label="Delay time (seconds)">
+              </div>
+              <div class="vread" id="delayTimeVal">0.24s</div>
             </div>
-            <div class="vread" id="delayTimeVal">0.24s</div>
           </div>
         </div>
 
-        <!-- DUB TECHNO CONTROLS -->
-        <div class="sectionTitle">Dub techno controls</div>
-        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin: 6px 2px;">
-          <div class="vlabel">Dub Root</div>
-          <select id="dubKeySel">
-            <option value="48">C3</option><option value="49">C#3</option><option value="50">D3</option><option value="51">D#3</option>
-            <option value="52" selected>E3</option><option value="53">F3</option><option value="54">F#3</option><option value="55">G3</option>
-            <option value="56">G#3</option><option value="57">A3</option><option value="58">A#3</option><option value="59">B3</option>
-          </select>
+        <!-- NEW: Four Recording Decks -->
+        <div class="card">
+          <div class="sectionTitle">Recording decks (A–D)</div>
+          <div class="decksGrid">
+            <!-- Deck A -->
+            <div class="deck" id="deckA">
+              <div class="deckHeader">Deck A</div>
+              <div class="deckControls">
+                <button class="btn small" id="deckARec" title="Record machine output to this deck">● Rec</button>
+                <button class="btn small red" id="deckAStop" title="Stop recording or stop playback">■ Stop</button>
+                <button class="btn small" id="deckAPlay" title="Play/Pause the recorded or loaded audio">▶/⏸</button>
+                <label style="display:flex; gap:6px; align-items:center;">
+                  <input type="checkbox" id="deckALoop" checked> Loop
+                </label>
+              </div>
+              <div class="deckActions">
+                <button class="btn small" id="deckASave" title="Download the current deck audio">💾 Save</button>
+                <button class="btn small" id="deckALoadBtn" title="Load a file into this deck">📂 Load</button>
+                <input type="file" id="deckALoad" accept="audio/*" style="display:none">
+              </div>
+              <div class="deckRow">
+                <div class="vlabel">Vol</div>
+                <input id="deckAVol" type="range" min="0" max="1" step="0.01" value="1.00">
+                <div class="vread" id="deckAVolVal">1.00</div>
+              </div>
+              <div class="deckStatus">
+                <span id="deckAStatus">Idle</span>
+                <span id="deckATime">00:00</span>
+              </div>
+              <audio id="deckAAudio" preload="metadata" style="display:none"></audio>
+            </div>
 
-          <div class="vlabel">Chord Type</div>
-          <select id="chordTypeSel">
-            <option value="min7" selected>min7</option>
-            <option value="min">minor</option>
-            <option value="maj">major</option>
-            <option value="sus2">sus2</option>
-            <option value="sus4">sus4</option>
-          </select>
+            <!-- Deck B -->
+            <div class="deck" id="deckB">
+              <div class="deckHeader">Deck B</div>
+              <div class="deckControls">
+                <button class="btn small" id="deckBRec">● Rec</button>
+                <button class="btn small red" id="deckBStop">■ Stop</button>
+                <button class="btn small" id="deckBPlay">▶/⏸</button>
+                <label style="display:flex; gap:6px; align-items:center;">
+                  <input type="checkbox" id="deckBLoop" checked> Loop
+                </label>
+              </div>
+              <div class="deckActions">
+                <button class="btn small" id="deckBSave">💾 Save</button>
+                <button class="btn small" id="deckBLoadBtn">📂 Load</button>
+                <input type="file" id="deckBLoad" accept="audio/*" style="display:none">
+              </div>
+              <div class="deckRow">
+                <div class="vlabel">Vol</div>
+                <input id="deckBVol" type="range" min="0" max="1" step="0.01" value="1.00">
+                <div class="vread" id="deckBVolVal">1.00</div>
+              </div>
+              <div class="deckStatus">
+                <span id="deckBStatus">Idle</span>
+                <span id="deckBTime">00:00</span>
+              </div>
+              <audio id="deckBAudio" preload="metadata" style="display:none"></audio>
+            </div>
 
-          <div class="vlabel">Gate</div>
-          <input id="chordGate" type="range" min="0.08" max="0.6" step="0.01" value="0.22"
-                 style="appearance:none; width:160px; height: 10px; border-radius: 8px;
-                        background:linear-gradient(90deg, rgba(154,125,255,.45), rgba(99,255,195,.45));
-                        outline:none;">
-          <div class="vread" id="chordGateVal">0.22s</div>
+            <!-- Deck C -->
+            <div class="deck" id="deckC">
+              <div class="deckHeader">Deck C</div>
+              <div class="deckControls">
+                <button class="btn small" id="deckCRec">● Rec</button>
+                <button class="btn small red" id="deckCStop">■ Stop</button>
+                <button class="btn small" id="deckCPlay">▶/⏸</button>
+                <label style="display:flex; gap:6px; align-items:center;">
+                  <input type="checkbox" id="deckCLoop" checked> Loop
+                </label>
+              </div>
+              <div class="deckActions">
+                <button class="btn small" id="deckCSave">💾 Save</button>
+                <button class="btn small" id="deckCLoadBtn">📂 Load</button>
+                <input type="file" id="deckCLoad" accept="audio/*" style="display:none">
+              </div>
+              <div class="deckRow">
+                <div class="vlabel">Vol</div>
+                <input id="deckCVol" type="range" min="0" max="1" step="0.01" value="1.00">
+                <div class="vread" id="deckCVolVal">1.00</div>
+              </div>
+              <div class="deckStatus">
+                <span id="deckCStatus">Idle</span>
+                <span id="deckCTime">00:00</span>
+              </div>
+              <audio id="deckCAudio" preload="metadata" style="display:none"></audio>
+            </div>
+
+            <!-- Deck D -->
+            <div class="deck" id="deckD">
+              <div class="deckHeader">Deck D</div>
+              <div class="deckControls">
+                <button class="btn small" id="deckDRec">● Rec</button>
+                <button class="btn small red" id="deckDStop">■ Stop</button>
+                <button class="btn small" id="deckDPlay">▶/⏸</button>
+                <label style="display:flex; gap:6px; align-items:center;">
+                  <input type="checkbox" id="deckDLoop" checked> Loop
+                </label>
+              </div>
+              <div class="deckActions">
+                <button class="btn small" id="deckDSave">💾 Save</button>
+                <button class="btn small" id="deckDLoadBtn">📂 Load</button>
+                <input type="file" id="deckDLoad" accept="audio/*" style="display:none">
+              </div>
+              <div class="deckRow">
+                <div class="vlabel">Vol</div>
+                <input id="deckDVol" type="range" min="0" max="1" step="0.01" value="1.00">
+                <div class="vread" id="deckDVolVal">1.00</div>
+              </div>
+              <div class="deckStatus">
+                <span id="deckDStatus">Idle</span>
+                <span id="deckDTime">00:00</span>
+              </div>
+              <audio id="deckDAudio" preload="metadata" style="display:none"></audio>
+            </div>
+          </div>
+          <div class="subtitle" style="margin-top:6px;">
+            Note: Decks record the synth output. Deck playback is mixed after the recorder tap, so it will not be re-recorded if you overdub.
+          </div>
         </div>
 
-        <div class="vstack" aria-label="Dub Techno Stack">
-          <div class="vcard" aria-label="Dub delay mix">
-            <div class="vlabel">Dub Mix</div>
-            <div class="vslider-wrap"><input id="dubMix" class="vslider" type="range" min="0" max="1" step="0.01" value="0.35"></div>
-            <div class="vread" id="dubMixVal">0.35</div>
-          </div>
+        <!-- Sequencer -->
+        <div class="card seq" id="seq" aria-label="Step sequencer grid"></div>
 
-          <div class="vcard" aria-label="Dub delay feedback">
-            <div class="vlabel">Dub FB</div>
-            <div class="vslider-wrap"><input id="dubFb" class="vslider" type="range" min="0" max="0.98" step="0.01" value="0.55"></div>
-            <div class="vread" id="dubFbVal">0.55</div>
-          </div>
-
-          <div class="vcard" aria-label="Dub delay time">
-            <div class="vlabel">Dub Time</div>
-            <div class="vslider-wrap"><input id="dubTime" class="vslider" type="range" min="0.15" max="1.1" step="0.01" value="0.45"></div>
-            <div class="vread" id="dubTimeVal">0.45s</div>
-          </div>
-
-          <div class="vcard" aria-label="Dub delay color">
-            <div class="vlabel">Dub Color</div>
-            <div class="vslider-wrap"><input id="dubColor" class="vslider" type="range" min="800" max="10000" step="1" value="3500"></div>
-            <div class="vread" id="dubColorVal">3.5k</div>
-          </div>
-
-          <div class="vcard" aria-label="Drums send to dub">
-            <div class="vlabel">Drums→Dub</div>
-            <div class="vslider-wrap"><input id="drumsSend" class="vslider" type="range" min="0" max="1" step="0.01" value="0.30"></div>
-            <div class="vread" id="drumsSendVal">0.30</div>
-          </div>
-
-          <div class="vcard" aria-label="Chord filter cutoff">
-            <div class="vlabel">Chord Cut</div>
-            <div class="vslider-wrap"><input id="chordCut" class="vslider" type="range" min="400" max="8000" step="1" value="1800"></div>
-            <div class="vread" id="chordCutVal">1.8k</div>
-          </div>
-
-          <div class="vcard" aria-label="Chord resonance">
-            <div class="vlabel">Chord Res</div>
-            <div class="vslider-wrap"><input id="chordRes" class="vslider" type="range" min="0.1" max="18" step="0.1" value="0.7"></div>
-            <div class="vread" id="chordResVal">0.7</div>
-          </div>
-
-          <div class="vcard" aria-label="LFO rate">
-            <div class="vlabel">LFO Rate</div>
-            <div class="vslider-wrap"><input id="lfoRate" class="vslider" type="range" min="0.05" max="3.0" step="0.01" value="0.25"></div>
-            <div class="vread" id="lfoRateVal">0.25Hz</div>
-          </div>
-
-          <div class="vcard" aria-label="LFO amount">
-            <div class="vlabel">LFO Amt</div>
-            <div class="vslider-wrap"><input id="lfoAmt" class="vslider" type="range" min="0" max="3000" step="1" value="600"></div>
-            <div class="vread" id="lfoAmtVal">600</div>
-          </div>
-
-          <div class="vcard" aria-label="Detune">
-            <div class="vlabel">Detune</div>
-            <div class="vslider-wrap"><input id="detune" class="vslider" type="range" min="0" max="20" step="0.1" value="7"></div>
-            <div class="vread" id="detuneVal">7¢</div>
-          </div>
-
-          <div class="vcard" aria-label="Freeze dub echo" style="min-height: 120px;">
-            <div class="vlabel">Freeze</div>
-            <button id="dubFreezeBtn" class="btn small" title="Infinite dub loop">∞ Hold</button>
-            <div class="vread" id="freezeState">off</div>
-          </div>
+        <div class="foot">
+          Tip: bass steps cycle Off → R → ♭3 → 4 → 5 → ♭7 → 8.
+          Preset <strong>NCTS — NEXT</strong> approximates the vibe of the linked track using only synthesized sounds.
+          <strong>Dub City</strong> adds deep chords with tape echo and a filter LFO.
         </div>
       </div>
 
-      <!-- Analyzer visuals -->
-      <div class="card analyzer">
-        <span class="badge">Master Scope</span>
-        <canvas id="scope" width="600" height="160" aria-hidden="true"></canvas>
+      <!-- RIGHT COLUMN: Visualizations -->
+      <div class="analyzer">
+        <div class="meter">
+          <span class="badge">Master Wave</span>
+          <canvas id="wave" width="600" height="120" aria-hidden="true"></canvas>
+        </div>
+        <div class="meter">
+          <span class="badge">Spectrum</span>
+          <canvas id="scope" width="600" height="120" aria-hidden="true"></canvas>
+        </div>
+        <div class="meter tall">
+          <span class="badge">Spectrogram</span>
+          <canvas id="spectro" width="600" height="160" aria-hidden="true"></canvas>
+        </div>
+        <div class="meter sm">
+          <span class="badge">Dub Return</span>
+          <canvas id="dubscope" width="600" height="80" aria-hidden="true"></canvas>
+        </div>
       </div>
-    </div>
-
-    <!-- Sequencer -->
-    <div class="card seq" id="seq" aria-label="Step sequencer grid"></div>
-
-    <div class="foot">
-      Tip: bass steps cycle Off → R → ♭3 → 4 → 5 → ♭7 → 8.  
-      Preset <strong>NCTS — NEXT</strong> approximates the vibe of the linked track using only synthesized sounds.  
-      New: <strong>Dub City</strong> adds deep chords with tape echo and a filter LFO.
     </div>
   </div>
 
@@ -478,25 +744,40 @@
   "use strict";
   /**
    * =====================================================================
-   * BRAZILIAN PHONK + DUB TECHNO MACHINE — COMPLETE ONE FILE APP
+   * BRAZILIAN PHONK + DUB TECHNO MACHINE — SINGLE PAGE + 4 RECORD DECKS
    * =====================================================================
-   * What you get:
-   * - A 16 step drum machine with kick, snare, clap, closed hat, open hat,
-   *   cowbell, a monophonic 808 bass, and a new "Dub Chord" track.
-   * - Master effects: low pass "Tone", Drive, Reverb, Delay.
-   * - Dub deck: separate tape echo (with color filter, mix, feedback, time),
-   *   drums send to dub, Freeze button for infinite feedback.
-   * - Dub chord synth: saw based triads or sevenths, per note envelopes,
-   *   global low pass with LFO and resonance, detune for width.
+   * What changed vs original:
+   * - Single page layout: Transport & Presets placed above Dub Techno controls
+   * - Four recording decks (A–D) with record / stop / play / loop / save / load
+   * - Deck playback is mixed after the recorder tap to avoid feedback
+   * - Mobile-first grids, sticky transport card, no horizontal rail
    *
    * Important:
-   * - Click Power first. Browsers require a user gesture to start audio.
-   * - Then Play. Edit steps. Load presets. Try Dub City and Freeze.
+   * - Click Power first (creates AudioContext).
+   * - Then Play. Edit steps. Use decks to capture loops, save or load.
    */
 
   /* ------------------------- Utilities ------------------------- */
+  /** Clamp helper to ensure values stay inside [min,max]. */
   const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
+  /** Convert MIDI note number to frequency in Hz. */
   const midiToFreq = (m) => 440 * Math.pow(2, (m - 69) / 12);
+  /** Format seconds -> MM:SS for deck timers. */
+  function fmtTime(t){
+    t = Math.max(0, t|0);
+    const m = String(Math.floor(t/60)).padStart(2,'0');
+    const s = String(t%60).padStart(2,'0');
+    return m+':'+s;
+  }
+  /** Download a Blob with a given filename. */
+  function downloadBlob(blob, filename){
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 0);
+  }
 
   /* --------------------- Global Audio State -------------------- */
   let ctx = null;                 // created on Power
@@ -512,14 +793,26 @@
       masterPreFX, masterFilter, waveShaper, masterDry,
       reverbIn, reverbNode, reverbWet,
       delayNode, delayFbGain, delayWet,
-      masterMix, masterGain, analyser, analyserData;
+      masterMix, masterGain, analyser, analyserData, timeData;
 
-  // Dub deck nodes (separate echo)
-  let dubSendBus, drumsSendGain, dubDelay, dubFbFilter, dubFbGain, dubWet;
+  // Recorder tap (captures synth output pre-deck)
+  let recorderDest = null;        // MediaStreamDestination for MediaRecorder
+  let recTapGain = null;          // tap from masterMix to recorderDest
+
+  // Decks summing bus (post-rec tap so decks aren't re-recorded)
+  let deckOutGain = null;
+
+  // Dub deck nodes (separate echo) — extended
+  let dubSendBus, drumsSendGain, dubDelay, dubFbHPF, dubFbFilter, dubDrive, dubFbGain;
+  let dubPan, dubPanLFO, dubPanLFOMod, dubWowLFO, dubWowMod, dubWet, dubDuckGain;
   let isDubFrozen = false; let storedDubFb = 0.55;
+  let dubHissGain, dubHissHP, dubHissSrc;
+  let dubAnalyser, dubTimeData;
 
-  // Dub chord global chain (so LFO can move a persistent filter)
+  // Dub chord global chain + chorus + sends
   let dubChordIn, chordHP, chordLP, chordLFO, chordLFOAmt;
+  let chChorusDelay, chChorusWet, chChorusLFO, chChorusLFOMod;
+  let chordDubSend, chordRevSend;
 
   // Noise buffer for drums
   let noiseBuffer = null;
@@ -539,10 +832,8 @@
   const trackState = TRACKS.map(() => ({ gain: 0.9, mute: false, node: null }));
 
   // Patterns
-  // boolean arrays for 7 non-bass tracks (kick..bell, dub chord)
-  let patterns = Array.from({length: 7}, () => Array(16).fill(false));
-  // bass degrees: -1 off, 0 R, 1 ♭3, 2 4, 3 5, 4 ♭7, 5 8
-  let bassPattern = Array(16).fill(-1);
+  let patterns = Array.from({length: 7}, () => Array(16).fill(false)); // drums + dub chords
+  let bassPattern = Array(16).fill(-1); // bass degrees: -1 off, 0 R, 1 ♭3, 2 4, 3 5, 4 ♭7, 5 8
 
   let bassRoot = 40;           // E2 by default
   let bassScale = 'minor';     // 'minor' or 'phrygian'
@@ -562,13 +853,23 @@
   let lfoRateHz  = 0.25;    // LFO frequency
   let lfoAmtHz   = 600;     // LFO amplitude in Hz
 
-  // UI references for the analyzer
-  const scope = document.getElementById('scope');
-  const sc = scope.getContext('2d');
+  // NEW: chord extras
+  let chordEnvAmt = 800;    // Hz added at attack
+  let chordEnvDecay = 0.50; // seconds
+  let chorusMix = 0.35, chorusRate = 0.80, chorusDepthMs = 6.0;
+
+  /* --------- CANVAS / VISUALIZER CONTEXTS --------- */
+  const waveCanvas = document.getElementById('wave');
+  const waveCtx = waveCanvas.getContext('2d');
+  const spectrumCanvas = document.getElementById('scope');
+  const specCtx = spectrumCanvas.getContext('2d');
+  const spectroCanvas = document.getElementById('spectro');
+  const spectroCtx = spectroCanvas.getContext('2d');
+  const dubCanvas = document.getElementById('dubscope');
+  const dubCtx = dubCanvas.getContext('2d');
 
   /* ------------------------ Preset Helpers --------------------- */
   function stepMask(...masks){
-    // Build a 16 step boolean mask from "1"/"0" strings (OR'ed)
     const out = Array(16).fill(false);
     for (const s of masks){
       const t = s.trim();
@@ -577,7 +878,6 @@
     return out;
   }
   function degreeMask(s){
-    // Accepts: R 3 4 5 7 8 and "-" for off. "3" means ♭3 in our map.
     const out = Array(16).fill(-1);
     const clean = s.replace(/\s+/g,'');
     let idx = 0;
@@ -594,17 +894,20 @@
     return out;
   }
 
-  // Presets include drums patterns [0..5], dub-chord pattern [6], and a bass pattern
+  /* ------------------------- PRESETS (same as before) ------------------------- */
   const PRESETS = {
     classic(){
       return {
         bpm: 160, swing: 0.12, tone: 13000, drive: 140,
         reverb: 0.22, delayMix: 0.14, delayFb: 0.28, delayTime: 0.22,
         root: 40, scale: 'minor', duck: 0.45,
-        // dub deck
+        // dub deck A
         dubMix: 0.35, dubFb: 0.55, dubTime: 0.45, dubColor: 3500, drumsSend: 0.30,
-        // chord synth
+        // dub deck B (new)
+        dubHP: 180, dubDrive: 80, panAmt: 0.7, panRate: 0.40, wowRate: 1.2, wowAmt: 3.0, duckDub: 0.6, hiss: 0.02,
+        // chord synth + extras
         dubRoot: 52, chordType: 'min7', chordGate: 0.22, detune: 7, chordCut: 1800, chordRes: 0.7, lfoRate: 0.25, lfoAmt: 600,
+        chDubSend: 0.25, chRevSend: 0.2, envAmt: 800, envDec: 0.50, chorusMix: 0.35, chorusRate: 0.80, chorusDepth: 6.0,
         // gains for 8 tracks (kick..bell, dub, bass)
         trackGains: [0.98, 0.9, 0.6, 0.65, 0.4, 0.7, 0.72, 0.95],
         patterns: [
@@ -614,7 +917,7 @@
           stepMask("1111111111111111"),
           stepMask("0001000100010001"),
           stepMask("1001001001001001", "0000000100000000"),
-          stepMask("1000000010000000") // dub chord stabs on 1 and 9
+          stepMask("1000000010000000")
         ],
         bassPattern: degreeMask("R--5--R-5---R-8-")
       };
@@ -625,7 +928,9 @@
         reverb: 0.18, delayMix: 0.22, delayFb: 0.42, delayTime: 0.20,
         root: 43, scale: 'minor', duck: 0.55,
         dubMix: 0.40, dubFb: 0.60, dubTime: 0.38, dubColor: 4200, drumsSend: 0.35,
+        dubHP: 200, dubDrive: 100, panAmt: 0.85, panRate: 0.55, wowRate: 1.5, wowAmt: 2.0, duckDub: 0.6, hiss: 0.015,
         dubRoot: 55, chordType: 'sus2', chordGate: 0.18, detune: 9, chordCut: 2200, chordRes: 0.9, lfoRate: 0.35, lfoAmt: 750,
+        chDubSend: 0.30, chRevSend: 0.18, envAmt: 600, envDec: 0.40, chorusMix: 0.30, chorusRate: 1.10, chorusDepth: 7.5,
         trackGains: [1.00, 0.85, 0.55, 0.70, 0.5, 0.9, 0.68, 0.98],
         patterns: [
           stepMask("1000100010001000", "0000000000010000"),
@@ -634,7 +939,7 @@
           stepMask("1111111111111111"),
           stepMask("0001000100010001", "0000000000010000"),
           stepMask("1010010010100101"),
-          stepMask("1000100010001000") // chords quarter notes
+          stepMask("1000100010001000")
         ],
         bassPattern: degreeMask("R-5-R-5-R-8-R-5-")
       };
@@ -645,7 +950,9 @@
         reverb: 0.26, delayMix: 0.12, delayFb: 0.34, delayTime: 0.26,
         root: 38, scale: 'phrygian', duck: 0.52,
         dubMix: 0.30, dubFb: 0.62, dubTime: 0.50, dubColor: 2800, drumsSend: 0.25,
+        dubHP: 220, dubDrive: 140, panAmt: 0.55, panRate: 0.28, wowRate: 0.7, wowAmt: 4.0, duckDub: 0.65, hiss: 0.01,
         dubRoot: 51, chordType: 'min', chordGate: 0.24, detune: 6, chordCut: 1500, chordRes: 1.2, lfoRate: 0.22, lfoAmt: 500,
+        chDubSend: 0.20, chRevSend: 0.28, envAmt: 500, envDec: 0.60, chorusMix: 0.40, chorusRate: 0.55, chorusDepth: 8.0,
         trackGains: [0.98, 0.9, 0.5, 0.6, 0.35, 0.7, 0.70, 0.90],
         patterns: [
           stepMask("1000100010001000", "0000001000000000"),
@@ -665,7 +972,9 @@
         reverb: 0.30, delayMix: 0.20, delayFb: 0.26, delayTime: 0.28,
         root: 45, scale: 'minor', duck: 0.35,
         dubMix: 0.28, dubFb: 0.45, dubTime: 0.42, dubColor: 5000, drumsSend: 0.22,
+        dubHP: 150, dubDrive: 60, panAmt: 0.35, panRate: 0.20, wowRate: 0.9, wowAmt: 2.0, duckDub: 0.45, hiss: 0.015,
         dubRoot: 57, chordType: 'maj', chordGate: 0.20, detune: 5, chordCut: 2600, chordRes: 0.7, lfoRate: 0.30, lfoAmt: 500,
+        chDubSend: 0.18, chRevSend: 0.30, envAmt: 700, envDec: 0.45, chorusMix: 0.33, chorusRate: 0.75, chorusDepth: 5.0,
         trackGains: [0.90, 0.8, 0.55, 0.55, 0.35, 0.7, 0.66, 0.85],
         patterns: [
           stepMask("1000100010001000"),
@@ -679,14 +988,15 @@
         bassPattern: degreeMask("R---4---5---8---")
       };
     },
-    // Approximation of the "NCTS - NEXT" energy. No samples, all synth.
     ncts(){
       return {
         bpm: 165, swing: 0.10, tone: 12600, drive: 280,
         reverb: 0.30, delayMix: 0.05, delayFb: 0.59, delayTime: 0.29,
         root: 40, scale: 'minor', duck: 0.58,
         dubMix: 0.33, dubFb: 0.60, dubTime: 0.33, dubColor: 4000, drumsSend: 0.28,
+        dubHP: 200, dubDrive: 100, panAmt: 0.9, panRate: 0.55, wowRate: 1.4, wowAmt: 2.5, duckDub: 0.65, hiss: 0.018,
         dubRoot: 52, chordType: 'sus2', chordGate: 0.18, detune: 8.5, chordCut: 2300, chordRes: 0.9, lfoRate: 0.28, lfoAmt: 700,
+        chDubSend: 0.28, chRevSend: 0.22, envAmt: 650, envDec: 0.45, chorusMix: 0.30, chorusRate: 1.0, chorusDepth: 6.5,
         trackGains: [1.00, 0.88, 0.62, 0.72, 0.48, 0.86, 0.70, 0.98],
         patterns: [
           stepMask("1000100010001000", "0000000010000000"),
@@ -700,14 +1010,15 @@
         bassPattern: degreeMask("R-5-R-5-R-8-R-5-")
       };
     },
-    // Dedicated dub techno preset
     dubcity(){
       return {
         bpm: 136, swing: 0.06, tone: 11000, drive: 120,
         reverb: 0.34, delayMix: 0.16, delayFb: 0.30, delayTime: 0.30,
         root: 40, scale: 'minor', duck: 0.40,
         dubMix: 0.45, dubFb: 0.72, dubTime: 0.55, dubColor: 3000, drumsSend: 0.42,
+        dubHP: 240, dubDrive: 120, panAmt: 0.50, panRate: 0.25, wowRate: 0.9, wowAmt: 4.5, duckDub: 0.60, hiss: 0.02,
         dubRoot: 52, chordType: 'min7', chordGate: 0.26, detune: 9, chordCut: 1600, chordRes: 1.4, lfoRate: 0.22, lfoAmt: 900,
+        chDubSend: 0.35, chRevSend: 0.25, envAmt: 900, envDec: 0.60, chorusMix: 0.45, chorusRate: 0.65, chorusDepth: 9.0,
         trackGains: [0.95, 0.82, 0.52, 0.60, 0.34, 0.62, 0.78, 0.88],
         patterns: [
           stepMask("1000100010001000"),
@@ -724,28 +1035,37 @@
   };
 
   /* ------------------------ Audio Graph Setup ------------------ */
+  /**
+   * Create the entire WebAudio graph, including:
+   * - Master channel with tone, drive, delay, reverb
+   * - Separate "dub" delay bus with color, HPF, drive and freeze
+   * - Chord chain (HPF→LPF) with LFO + chorus + sends
+   * - Analyser nodes for master and dub return
+   * - Recorder tap to a MediaStreamDestination (for decks)
+   * - Decks mixed post-rec tap so they don't feed the recorder
+   */
   function initAudio(){
-    if (ctx) return;
+    if (ctx) return; // already created once
     ctx = new (window.AudioContext || window.webkitAudioContext)();
 
-    // Buses
-    musicBus = ctx.createGain(); musicBus.gain.value = 1.0;
-    duckGain = ctx.createGain(); duckGain.gain.value = 1.0;
+    /* ---------------- Master / Buses ---------------- */
+    musicBus = ctx.createGain(); musicBus.gain.value = 1.0; // all instruments (except kick) go here
+    duckGain = ctx.createGain(); duckGain.gain.value = 1.0; // global sidechain ducking
     musicBus.connect(duckGain);
 
     masterPreFX = ctx.createGain(); masterPreFX.gain.value = 1.0;
     duckGain.connect(masterPreFX);
 
-    // Master tone filter
+    // Master tone filter (low-pass)
     masterFilter = ctx.createBiquadFilter(); masterFilter.type = 'lowpass'; masterFilter.frequency.value = 13000;
 
-    // Drive
+    // Drive (waveshaper)
     waveShaper = ctx.createWaveShaper(); waveShaper.curve = makeDistortionCurve(140);
 
     // Dry branch to mix
     masterDry = ctx.createGain(); masterDry.gain.value = 1.0;
 
-    // Master delay (simple)
+    // Master delay
     delayNode = ctx.createDelay(1.0); delayNode.delayTime.value = 0.24;
     delayFbGain = ctx.createGain();   delayFbGain.gain.value = 0.32;
     delayWet = ctx.createGain();      delayWet.gain.value = 0.18;
@@ -772,42 +1092,112 @@
     reverbWet.connect(masterMix);
 
     masterGain = ctx.createGain(); masterGain.gain.value = 0.9;
-    analyser = ctx.createAnalyser(); analyser.fftSize = 1024; analyserData = new Uint8Array(analyser.frequencyBinCount);
 
-    masterMix.connect(masterGain); masterGain.connect(analyser); analyser.connect(ctx.destination);
+    // --- Recorder tap (pre-deck) ---
+    recTapGain = ctx.createGain(); recTapGain.gain.value = 1.0;
+    recorderDest = ctx.createMediaStreamDestination(); // room for multiple recorders (one per deck)
+    masterMix.connect(recTapGain);
+    recTapGain.connect(recorderDest);
 
-    // Track outputs: kick direct to masterPreFX, others to musicBus
+    // --- Decks bus (post-rec tap) ---
+    deckOutGain = ctx.createGain(); deckOutGain.gain.value = 1.0;
+
+    // Master analyser (drives waveform, spectrum, spectrogram)
+    analyser = ctx.createAnalyser();
+    analyser.fftSize = 2048;
+    analyser.smoothingTimeConstant = 0.85;
+    analyserData = new Uint8Array(analyser.frequencyBinCount);
+    timeData = new Uint8Array(analyser.fftSize);
+
+    // Final mix: masterMix + decks → masterGain → analyser → destination
+    masterMix.connect(masterGain);
+    deckOutGain.connect(masterGain);
+    masterGain.connect(analyser);
+    analyser.connect(ctx.destination);
+
+    /* ---------------- Track outputs ---------------- */
     TRACKS.forEach((_, i) => {
       const g = ctx.createGain(); g.gain.value = trackState[i].gain;
-      if (i === 0) g.connect(masterPreFX); else g.connect(musicBus);
+      if (i === 0) g.connect(masterPreFX); else g.connect(musicBus); // kick direct to preFX
       trackState[i].node = g;
     });
 
-    // Dub deck
-    dubSendBus = ctx.createGain();           // receives drums and chords to echo
+    /* ---------------- Dub deck (separate echo) ---------------- */
+    dubSendBus = ctx.createGain();           // receives drums + chords to echo
     drumsSendGain = ctx.createGain(); drumsSendGain.gain.value = 0.30;
     musicBus.connect(drumsSendGain); drumsSendGain.connect(dubSendBus);
 
     dubDelay = ctx.createDelay(2.0); dubDelay.delayTime.value = 0.45;
+
+    // Feedback path: Delay -> HPF -> LPF -> Drive -> FB gain -> Delay
+    dubFbHPF = ctx.createBiquadFilter();   dubFbHPF.type = 'highpass'; dubFbHPF.frequency.value = 180;
     dubFbFilter = ctx.createBiquadFilter(); dubFbFilter.type = 'lowpass'; dubFbFilter.frequency.value = 3500;
-    dubFbGain = ctx.createGain(); dubFbGain.gain.value = 0.55;
-    dubWet = ctx.createGain(); dubWet.gain.value = 0.35;
+    dubDrive = ctx.createWaveShaper();     dubDrive.curve = makeDistortionCurve(80);
+    dubFbGain = ctx.createGain();          dubFbGain.gain.value = 0.55;
 
-    // Dub feedback loop: delay -> filter -> gain -> delay
+    dubPan = ctx.createStereoPanner();     dubPan.pan.value = 0;
+    dubDuckGain = ctx.createGain();        dubDuckGain.gain.value = 1.0;
+    dubWet = ctx.createGain();             dubWet.gain.value = 0.35;
+
+    // Wet chain
     dubSendBus.connect(dubDelay);
-    dubDelay.connect(dubWet);         // to output mix
-    dubDelay.connect(dubFbFilter);    // to feedback
-    dubFbFilter.connect(dubFbGain);
-    dubFbGain.connect(dubDelay);
-    dubWet.connect(masterMix);        // into the main mix
+    dubDelay.connect(dubPan);
+    dubPan.connect(dubDuckGain);
+    dubDuckGain.connect(dubWet);
+    dubWet.connect(masterMix);
 
-    // Dub chord persistent chain (so LFO can modulate it)
+    // Feedback chain
+    dubDelay.connect(dubFbHPF);
+    dubFbHPF.connect(dubFbFilter);
+    dubFbFilter.connect(dubDrive);
+    dubDrive.connect(dubFbGain);
+    dubFbGain.connect(dubDelay);
+
+    // Pan LFO (ping-pong feel)
+    dubPanLFO = ctx.createOscillator(); dubPanLFO.type = 'sine'; dubPanLFO.frequency.value = 0.40;
+    dubPanLFOMod = ctx.createGain();    dubPanLFOMod.gain.value = 0.70; // amount (0..1)
+    dubPanLFO.connect(dubPanLFOMod); dubPanLFOMod.connect(dubPan.pan); dubPanLFO.start();
+
+    // Wow/Flutter (delay time mod in seconds)
+    dubWowLFO = ctx.createOscillator(); dubWowLFO.type = 'sine'; dubWowLFO.frequency.value = 1.2;
+    dubWowMod = ctx.createGain();       dubWowMod.gain.value = 0.003; // 3ms
+    dubWowLFO.connect(dubWowMod); dubWowMod.connect(dubDelay.delayTime); dubWowLFO.start();
+
+    // Tape hiss (quiet broadband noise)
+    dubHissGain = ctx.createGain(); dubHissGain.gain.value = 0.02;
+    dubHissHP = ctx.createBiquadFilter(); dubHissHP.type = 'highpass'; dubHissHP.frequency.value = 3500;
+    dubHissSrc = ctx.createBufferSource(); dubHissSrc.buffer = createNoiseBuffer(); dubHissSrc.loop = true;
+    dubHissSrc.connect(dubHissHP).connect(dubHissGain).connect(masterMix);
+    dubHissSrc.start();
+
+    // Dub analyser for the meter
+    dubAnalyser = ctx.createAnalyser();
+    dubAnalyser.fftSize = 1024; dubAnalyser.smoothingTimeConstant = 0.8;
+    dubTimeData = new Uint8Array(dubAnalyser.fftSize);
+    dubWet.connect(dubAnalyser); // tap after ducking, before final mix
+
+    /* ---------------- Dub chord chain ---------------- */
     dubChordIn = ctx.createGain(); dubChordIn.gain.value = 1.0;
     chordHP = ctx.createBiquadFilter(); chordHP.type = 'highpass'; chordHP.frequency.value = 160;
     chordLP = ctx.createBiquadFilter(); chordLP.type = 'lowpass'; chordLP.frequency.value = chordCutHz; chordLP.Q.value = chordResQ;
 
+    // Chorus path for chords
+    chChorusDelay = ctx.createDelay(0.08); chChorusDelay.delayTime.value = 0.012;
+    chChorusWet = ctx.createGain(); chChorusWet.gain.value = chorusMix;
+
+    chChorusLFO = ctx.createOscillator(); chChorusLFO.type = 'sine'; chChorusLFO.frequency.value = chorusRate;
+    chChorusLFOMod = ctx.createGain(); chChorusLFOMod.gain.value = chorusDepthMs / 1000.0; // seconds
+    chChorusLFO.connect(chChorusLFOMod); chChorusLFOMod.connect(chChorusDelay.delayTime); chChorusLFO.start();
+
+    // Connect chord main + chorus to the dub track output
     dubChordIn.connect(chordHP); chordHP.connect(chordLP);
-    chordLP.connect(trackState[6].node); // goes to musicBus and can be sent to dub via drumsSendGain tap
+    chordLP.connect(trackState[6].node);               // dry chords to music bus
+    chordLP.connect(chChorusDelay); chChorusDelay.connect(chChorusWet).connect(trackState[6].node); // chorus wet
+
+    // Chord sends
+    chordDubSend = ctx.createGain(); chordDubSend.gain.value = 0.25; chordRevSend = ctx.createGain(); chordRevSend.gain.value = 0.2;
+    chordLP.connect(chordDubSend).connect(dubSendBus);
+    chordLP.connect(chordRevSend).connect(reverbIn);
 
     // LFO for chord filter cutoff
     chordLFO = ctx.createOscillator(); chordLFO.type = 'sine'; chordLFO.frequency.value = lfoRateHz;
@@ -818,8 +1208,11 @@
     // Shared noise for percussive instruments
     noiseBuffer = createNoiseBuffer();
 
-    // Start analyzer loop
-    requestAnimationFrame(drawAnalyzer);
+    // Start visualizers loop
+    requestAnimationFrame(drawAnalyzers);
+
+    // Ensure deck media elements are wired into WebAudio once ctx exists
+    ensureDeckGraphs();
   }
 
   /* ----------------------- DSP Helper Curves ------------------- */
@@ -861,7 +1254,6 @@
     g.gain.setValueAtTime(0.0001, t);
     g.gain.linearRampToValueAtTime(vel*1.2, t + 0.005);
     g.gain.exponentialRampToValueAtTime(0.0001, t + 0.55);
-    // click
     const click = ctx.createBufferSource(); click.buffer = noiseBuffer;
     const hp = ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value = 2200; hp.Q.value=0.7;
     const cg = ctx.createGain(); cg.gain.setValueAtTime(0.25*vel, t); cg.gain.exponentialRampToValueAtTime(0.0001, t + 0.018);
@@ -875,6 +1267,14 @@
     duckGain.gain.setValueAtTime(duckGain.gain.value, t);
     duckGain.gain.linearRampToValueAtTime(cut, t + 0.005);
     duckGain.gain.exponentialRampToValueAtTime(1.0, t + 0.24);
+
+    // duck the dub return (separate amount)
+    const dubAmt = Number(document.getElementById('duckDub').value);
+    const dubCut = 1 - (0.85*dubAmt);
+    dubDuckGain.gain.cancelScheduledValues(t);
+    dubDuckGain.gain.setValueAtTime(dubDuckGain.gain.value, t);
+    dubDuckGain.gain.linearRampToValueAtTime(dubCut, t + 0.005);
+    dubDuckGain.gain.exponentialRampToValueAtTime(1.0, t + 0.35);
 
     o.start(t); o.stop(t + 0.6);
   }
@@ -951,10 +1351,7 @@
     o.connect(lp).connect(sh).connect(g).connect(trackState[7].node);
     o.start(t); o.stop(t + dur + 0.05);
   }
-
-  // Dub chord stab: multiple saw voices, detuned, through global filter
   function triggerDubChord(t, vel=1){
-    // Define chord intervals by type
     let iv;
     switch (chordType){
       case 'maj':  iv = [0,4,7]; break;
@@ -964,15 +1361,19 @@
       default:     iv = [0,3,7,10]; // min7
     }
 
-    // For each chord tone create two detuned saw oscillators
+    const base = chordCutHz;
+    const amt = chordEnvAmt;
+    chordLP.frequency.cancelScheduledValues(t);
+    chordLP.frequency.setValueAtTime(base, t);
+    chordLP.frequency.linearRampToValueAtTime(base + amt, t + 0.02);
+    chordLP.frequency.exponentialRampToValueAtTime(Math.max(60, base), t + chordEnvDecay);
+
     iv.forEach(semi => {
       const baseMidi = dubRoot + semi;
       const o1 = ctx.createOscillator(); o1.type = 'sawtooth'; o1.frequency.value = midiToFreq(baseMidi);
       const o2 = ctx.createOscillator(); o2.type = 'sawtooth'; o2.frequency.value = midiToFreq(baseMidi);
-      o1.detune.value = +detuneCents; // cents
-      o2.detune.value = -detuneCents;
+      o1.detune.value = +detuneCents; o2.detune.value = -detuneCents;
 
-      // Short gate envelope for a stab
       const g = ctx.createGain();
       g.gain.setValueAtTime(0.0001, t);
       g.gain.linearRampToValueAtTime(0.7*vel, t + 0.008);
@@ -990,8 +1391,8 @@
   function nextStep(){
     const spb = secondsPerBeat();
     const swing = Number(document.getElementById('swing').value);
-    let stepDur = 0.25 * spb;            // 16th base
-    if (current16th % 2 === 1) stepDur += swing * (spb/8);  // delay off-steps
+    let stepDur = 0.25 * spb;
+    if (current16th % 2 === 1) stepDur += swing * (spb/8);
     nextNoteTime += stepDur;
     current16th = (current16th + 1) % 16;
   }
@@ -1004,7 +1405,6 @@
     if (patterns[5][stepIndex] && !trackState[5].mute) triggerCowbell(time, 0.85);
     if (patterns[6][stepIndex] && !trackState[6].mute) triggerDubChord(time, 1);
 
-    // Bass mapping
     if (!trackState[7].mute){
       const deg = bassPattern[stepIndex];
       if (deg >= 0){
@@ -1015,7 +1415,6 @@
       }
     }
 
-    // UI column highlight at the exact time
     const delta = Math.max(0, (time - ctx.currentTime) * 1000 - 2);
     setTimeout(() => highlightColumn(stepIndex), delta);
   }
@@ -1028,16 +1427,18 @@
 
   /* --------------------------- Transport ----------------------- */
   function applyUIToNodes(){
-    // Make sure current slider values are applied to nodes after powering
     const ids = ['master','tone','drive','reverb','delayMix','delayFbSlider','delayTime',
                  'dubMix','dubFb','dubTime','dubColor','drumsSend',
-                 'chordCut','chordRes','lfoRate','lfoAmt','detune','chordGate'];
+                 'chordCut','chordRes','lfoRate','lfoAmt','detune','chordGate',
+                 // Dub extras + chord space:
+                 'dubHP','dubDrive','panAmt','panRate','wowRate','wowAmt','duckDub','hiss',
+                 'chDubSend','chRevSend','envAmt','envDec','chorusMix','chorusRate','chorusDepth'];
     ids.forEach(id => {
       const el = document.getElementById(id);
       if (el) el.dispatchEvent(new Event('input', {bubbles:true}));
     });
   }
-  function powerOn(){ initAudio(); ctx.resume(); applyUIToNodes(); }
+  function powerOn(){ initAudio(); ctx.resume(); applyUIToNodes(); ensureDeckGraphs(); }
   function play(){
     if (!ctx) initAudio();
     ctx.resume();
@@ -1061,7 +1462,6 @@
     TRACKS.forEach((t, i) => {
       const row = document.createElement('div'); row.className = 'track';
 
-      // Label + per-track controls (mute + volume)
       const label = document.createElement('div'); label.className = 'label';
       const name = document.createElement('div'); name.className = 'name'; name.innerText = t.name; label.appendChild(name);
 
@@ -1076,7 +1476,6 @@
       });
       subs.appendChild(mute);
 
-      // Per track volume as a vertical slider card
       const volWrap = document.createElement('div');
       volWrap.className = 'vcard';
       volWrap.style.width = '90px'; volWrap.style.minHeight = '120px';
@@ -1097,7 +1496,6 @@
       label.appendChild(subs);
       row.appendChild(label);
 
-      // Step grid
       const grid = document.createElement('div'); grid.className='steps';
       for (let s=0; s<16; s++){
         const cell = document.createElement('div');
@@ -1107,8 +1505,7 @@
         if ((s+1)%4===0) cell.classList.add('bar-sep');
 
         if (i <= 5 || i === 6){
-          // drums and dub chord: toggle
-          const pi = (i === 7) ? 0 : i; // we never reach this branch for i===7
+          const pi = (i === 7) ? 0 : i;
           if (patterns[pi][s]) cell.classList.add('on');
           cell.addEventListener('click', () => {
             const idx = (i === 7) ? 0 : i;
@@ -1116,12 +1513,11 @@
             cell.classList.toggle('on', patterns[idx][s]);
           });
         } else {
-          // bass degrees (i === 7)
           const deg = bassPattern[s];
           if (deg >= 0){ cell.classList.add('on'); cell.innerText = DEGREE_LABELS[deg]; }
           cell.addEventListener('click', () => {
             const cur = bassPattern[s];
-            const next = (cur + 2) % 7 - 1; // -1 -> 0 -> 1 -> ... -> 5 -> -1
+            const next = (cur + 2) % 7 - 1;
             bassPattern[s] = next;
             if (next >= 0){ cell.classList.add('on'); cell.innerText = DEGREE_LABELS[next]; }
             else { cell.classList.remove('on'); cell.innerText = ''; }
@@ -1140,23 +1536,75 @@
     document.querySelectorAll(`.step[data-col="${col}"]`).forEach(el => el.classList.add('playing'));
   }
 
-  /* ------------------------ Analyzer Drawing ------------------- */
-  function drawAnalyzer(){
+  /* ------------------------ Visualizers ------------------------ */
+  function neonColor(v){
+    const h = 280 - 120*v;
+    const s = 80;
+    const l = 38 + 35*v;
+    return `hsl(${h}, ${s}%, ${l}%)`;
+  }
+  function drawAnalyzers(){
     if (analyser){
+      analyser.getByteTimeDomainData(timeData);
+      waveCtx.clearRect(0,0,waveCanvas.width,waveCanvas.height);
+      waveCtx.beginPath();
+      const w = waveCanvas.width, h = waveCanvas.height;
+      for (let i=0; i<timeData.length; i++){
+        const v = timeData[i] / 255;
+        const y = h * (1 - v);
+        const x = (i / (timeData.length-1)) * w;
+        if (i === 0) waveCtx.moveTo(x, y); else waveCtx.lineTo(x, y);
+      }
+      waveCtx.lineWidth = 2;
+      waveCtx.strokeStyle = 'rgba(99,255,195,0.85)';
+      waveCtx.stroke();
+      waveCtx.strokeStyle = 'rgba(154,125,255,0.25)';
+      waveCtx.lineWidth = 1; waveCtx.beginPath();
+      waveCtx.moveTo(0, h*0.5); waveCtx.lineTo(w, h*0.5); waveCtx.stroke();
+
       analyser.getByteFrequencyData(analyserData);
-      sc.clearRect(0,0,scope.width,scope.height);
-      const w = scope.width, h = scope.height;
+      specCtx.clearRect(0,0,spectrumCanvas.width,spectrumCanvas.height);
+      const sw = spectrumCanvas.width, sh = spectrumCanvas.height;
       const bars = 60, step = Math.floor(analyserData.length/bars);
       for (let i=0;i<bars;i++){
         const v = analyserData[i*step]/255;
-        const barH = v * (h - 12);
-        const x = (i/bars)*w;
-        sc.fillStyle = `rgba(154,125,255,${0.15 + 0.6*v})`;
-        sc.fillRect(x+2, h-barH-4, (w/bars)-4, barH);
+        const barH = v*(sh-12);
+        const x = (i/bars)*sw;
+        specCtx.fillStyle = neonColor(v);
+        specCtx.fillRect(x+2, sh-barH-4, (sw/bars)-4, barH);
       }
-      sc.fillStyle = 'rgba(99,255,195,.35)'; sc.fillRect(0, 0, w, 2);
+      specCtx.fillStyle = 'rgba(99,255,195,.35)'; specCtx.fillRect(0,0,sw,2);
+
+      const img = spectroCtx.getImageData(1, 0, spectroCanvas.width-1, spectroCanvas.height);
+      spectroCtx.putImageData(img, 0, 0);
+      const colX = spectroCanvas.width - 1;
+      const bins = analyserData.length;
+      for (let y=0; y<spectroCanvas.height; y++){
+        const yy = y / spectroCanvas.height;
+        const bin = Math.min(bins-1, Math.floor(Math.pow(yy, 1.7) * bins));
+        const v = analyserData[bin]/255;
+        spectroCtx.fillStyle = neonColor(v);
+        spectroCtx.fillRect(colX, spectroCanvas.height - y, 1, 1);
+      }
     }
-    requestAnimationFrame(drawAnalyzer);
+
+    if (dubAnalyser){
+      dubAnalyser.getByteTimeDomainData(dubTimeData);
+      const w = dubCanvas.width, h = dubCanvas.height;
+      dubCtx.clearRect(0,0,w,h);
+      let sum=0; for (let i=0;i<dubTimeData.length;i++){ const x=dubTimeData[i]/255*2-1; sum+=x*x; }
+      const rms = Math.sqrt(sum/dubTimeData.length);
+      const bar = rms * (h-10);
+      dubCtx.fillStyle = neonColor(Math.min(1, rms*1.4));
+      dubCtx.fillRect(6, h-bar-5, w-12, bar);
+      const last = dubTimeData[dubTimeData.length-1]/255;
+      const y = h * (1-last);
+      dubCtx.fillStyle = '#ffd369';
+      dubCtx.beginPath(); dubCtx.arc(w-10, y, 3, 0, Math.PI*2); dubCtx.fill();
+      dubCtx.strokeStyle = 'rgba(154,125,255,.35)'; dubCtx.strokeRect(5,5,w-10,h-10);
+    }
+
+    requestAnimationFrame(drawAnalyzers);
   }
 
   /* ----------------------- Presets / Random -------------------- */
@@ -1179,17 +1627,24 @@
     setSlider('delayTime', p.delayTime);
     setSlider('duck', p.duck);
 
-    // musical roots and scale
     document.getElementById('keySel').value = String(p.root);
     document.getElementById('scaleSel').value = p.scale;
     bassRoot = p.root; bassScale = p.scale;
 
-    // dub deck and chord synth
     setSlider('dubMix', p.dubMix);
     setSlider('dubFb', p.dubFb);
     setSlider('dubTime', p.dubTime);
     setSlider('dubColor', p.dubColor);
     setSlider('drumsSend', p.drumsSend);
+
+    setSlider('dubHP', p.dubHP);
+    setSlider('dubDrive', p.dubDrive);
+    setSlider('panAmt', p.panAmt);
+    setSlider('panRate', p.panRate);
+    setSlider('wowRate', p.wowRate);
+    setSlider('wowAmt', p.wowAmt);
+    setSlider('duckDub', p.duckDub);
+    setSlider('hiss', p.hiss);
 
     document.getElementById('dubKeySel').value = String(p.dubRoot);
     document.getElementById('chordTypeSel').value = p.chordType;
@@ -1199,20 +1654,24 @@
     setSlider('chordRes', p.chordRes);
     setSlider('lfoRate', p.lfoRate);
     setSlider('lfoAmt', p.lfoAmt);
+    setSlider('chDubSend', p.chDubSend);
+    setSlider('chRevSend', p.chRevSend);
+    setSlider('envAmt', p.envAmt);
+    setSlider('envDec', p.envDec);
+    setSlider('chorusMix', p.chorusMix);
+    setSlider('chorusRate', p.chorusRate);
+    setSlider('chorusDepth', p.chorusDepth);
 
-    // Track gains
     p.trackGains.forEach((v,i) => {
       trackState[i].gain = v;
       if (trackState[i].node && ctx) trackState[i].node.gain.setValueAtTime(v, ctx.currentTime);
     });
 
-    // Patterns (kick..bell, dub chord)
     for (let r=0; r<7; r++) patterns[r] = p.patterns[r].slice();
     bassPattern = p.bassPattern.slice();
 
     buildSequencer();
   }
-
   function randomSong(){
     const bpm = Math.floor(130 + Math.random()*60);
     const swing = +(Math.random()*0.18).toFixed(2);
@@ -1236,14 +1695,20 @@
     document.getElementById('scaleSel').value = scale;
     bassRoot = root; bassScale = scale;
 
-    // Dub deck randomization
     setSlider('dubMix', +(0.2 + Math.random()*0.5).toFixed(2));
     setSlider('dubFb', +(0.4 + Math.random()*0.5).toFixed(2));
     setSlider('dubTime', +(0.2 + Math.random()*0.6).toFixed(2));
     setSlider('dubColor', Math.floor(1200 + Math.random()*6000));
     setSlider('drumsSend', +(0.15 + Math.random()*0.5).toFixed(2));
+    setSlider('dubHP', Math.floor(120 + Math.random()*250));
+    setSlider('dubDrive', Math.floor(40 + Math.random()*200));
+    setSlider('panAmt', +(Math.random()).toFixed(2));
+    setSlider('panRate', +(0.12 + Math.random()*0.8).toFixed(2));
+    setSlider('wowRate', +(0.3 + Math.random()*2.0).toFixed(2));
+    setSlider('wowAmt', +(1 + Math.random()*5).toFixed(1));
+    setSlider('duckDub', +(0.3 + Math.random()*0.6).toFixed(2));
+    setSlider('hiss', +(Math.random()*0.04).toFixed(3));
 
-    // Dub chord synth randomization
     const dubKeys = [48,50,52,55,57]; document.getElementById('dubKeySel').value = String(dubKeys[Math.floor(Math.random()*dubKeys.length)]);
     const types = ['min7','min','maj','sus2','sus4']; document.getElementById('chordTypeSel').value = types[Math.floor(Math.random()*types.length)];
     setSlider('chordGate', +(0.16 + Math.random()*0.26).toFixed(2));
@@ -1253,7 +1718,14 @@
     setSlider('lfoRate', +(0.15 + Math.random()*0.8).toFixed(2));
     setSlider('lfoAmt', Math.floor(300 + Math.random()*1000));
 
-    // Drums & cowbell feels
+    setSlider('chDubSend', +(0.15 + Math.random()*0.5).toFixed(2));
+    setSlider('chRevSend', +(0.15 + Math.random()*0.5).toFixed(2));
+    setSlider('envAmt', Math.floor(300 + Math.random()*1500));
+    setSlider('envDec', +(0.25 + Math.random()*0.7).toFixed(2));
+    setSlider('chorusMix', +(0.2 + Math.random()*0.5).toFixed(2));
+    setSlider('chorusRate', +(0.4 + Math.random()*1.2).toFixed(2));
+    setSlider('chorusDepth', +(4 + Math.random()*7).toFixed(1));
+
     patterns[0] = stepMask("1000100010001000"); [2,6,7,10,14].forEach(s => { if (Math.random()<0.45) patterns[0][s]=true; });
     patterns[1] = stepMask("0000100000001000"); if (Math.random()<0.3) patterns[1][15] = true;
     patterns[2] = stepMask(Math.random()<0.7 ? "0000100000001000" : "0000000000001000");
@@ -1261,14 +1733,11 @@
     patterns[4] = stepMask("0001000100010001"); if (Math.random()<0.3) patterns[4][9] = true;
     patterns[5] = Array(16).fill(false); [0,3,6,8,11,14].forEach(s => { if (Math.random()<0.9) patterns[5][s] = true; }); if (Math.random()<0.4) patterns[5][15]=true;
 
-    // Dub chord: often on 1 and 9 for that classic stab
     patterns[6] = stepMask(Math.random()<0.5 ? "1000000010000000" : "1000100010001000");
 
-    // Bass feels
     const feels = ["R-5-R-5-R-8-R-5-","R--5--R-5---R-8-","R-3---5-3--8---","R---4---5---8---","R-5--7-R---5-8-"];
     bassPattern = degreeMask(feels[Math.floor(Math.random()*feels.length)]);
 
-    // Gains
     [0,1,2,3,4,5,6,7].forEach(i => {
       const tgt = i===0 ? 1.0 : (i===7 ? 0.95 : (0.5 + Math.random()*0.5));
       trackState[i].gain = +(tgt.toFixed(2));
@@ -1291,19 +1760,31 @@
       delayFb: Number(document.getElementById('delayFbSlider').value),
       delayTime: Number(document.getElementById('delayTime').value),
       duck: Number(document.getElementById('duck').value),
-      // dub deck + chord synth
       dubMix: Number(document.getElementById('dubMix').value),
       dubFb: Number(document.getElementById('dubFb').value),
       dubTime: Number(document.getElementById('dubTime').value),
       dubColor: Number(document.getElementById('dubColor').value),
       drumsSend: Number(document.getElementById('drumsSend').value),
+      dubHP: Number(document.getElementById('dubHP').value),
+      dubDrive: Number(document.getElementById('dubDrive').value),
+      panAmt: Number(document.getElementById('panAmt').value),
+      panRate: Number(document.getElementById('panRate').value),
+      wowRate: Number(document.getElementById('wowRate').value),
+      wowAmt: Number(document.getElementById('wowAmt').value),
+      duckDub: Number(document.getElementById('duckDub').value),
+      hiss: Number(document.getElementById('hiss').value),
       dubRoot, chordType, chordGate, detuneCents, chordCutHz, chordResQ, lfoRateHz, lfoAmtHz,
+      chDubSend: Number(document.getElementById('chDubSend').value),
+      chRevSend: Number(document.getElementById('chRevSend').value),
+      envAmt: chordEnvAmt,
+      envDec: chordEnvDecay,
+      chorusMix, chorusRate, chorusDepth: chorusDepthMs,
       trackGains: trackState.map(t => t.gain)
     };
-    localStorage.setItem('phonk_dub_v1', JSON.stringify(data));
+    localStorage.setItem('phonk_dub_v2', JSON.stringify(data));
   }
   function loadPattern(){
-    const raw = localStorage.getItem('phonk_dub_v1');
+    const raw = localStorage.getItem('phonk_dub_v2');
     if (!raw) return;
     const d = JSON.parse(raw);
     patterns = d.patterns; bassPattern = d.bassPattern; bassRoot = d.bassRoot; bassScale = d.bassScale;
@@ -1312,13 +1793,24 @@
     setSlider('reverb', d.reverb); setSlider('delayMix', d.delayMix);
     setSlider('delayFbSlider', d.delayFb); setSlider('delayTime', d.delayTime);
     setSlider('duck', d.duck);
+
     setSlider('dubMix', d.dubMix); setSlider('dubFb', d.dubFb); setSlider('dubTime', d.dubTime);
     setSlider('dubColor', d.dubColor); setSlider('drumsSend', d.drumsSend);
+
+    setSlider('dubHP', d.dubHP); setSlider('dubDrive', d.dubDrive);
+    setSlider('panAmt', d.panAmt); setSlider('panRate', d.panRate);
+    setSlider('wowRate', d.wowRate); setSlider('wowAmt', d.wowAmt);
+    setSlider('duckDub', d.duckDub); setSlider('hiss', d.hiss);
+
     document.getElementById('dubKeySel').value = String(d.dubRoot); dubRoot = d.dubRoot;
     document.getElementById('chordTypeSel').value = d.chordType; chordType = d.chordType;
     setSlider('chordGate', d.chordGate); setSlider('detune', d.detuneCents);
     setSlider('chordCut', d.chordCutHz); setSlider('chordRes', d.chordResQ);
     setSlider('lfoRate', d.lfoRateHz); setSlider('lfoAmt', d.lfoAmtHz);
+    setSlider('chDubSend', d.chDubSend); setSlider('chRevSend', d.chRevSend);
+    setSlider('envAmt', d.envAmt); setSlider('envDec', d.envDec);
+    setSlider('chorusMix', d.chorusMix); setSlider('chorusRate', d.chorusRate); setSlider('chorusDepth', d.chorusDepth);
+
     d.trackGains.forEach((g,i) => { trackState[i].gain = g; if (trackState[i].node && ctx) trackState[i].node.gain.setValueAtTime(g, ctx.currentTime); });
     buildSequencer();
   }
@@ -1378,11 +1870,9 @@
       document.getElementById('duckVal').innerText = v.toFixed(2);
     });
 
-    // Musical selectors
     document.getElementById('keySel').addEventListener('change', (e)=> { bassRoot = Number(e.target.value); });
     document.getElementById('scaleSel').addEventListener('change', (e)=> { bassScale = e.target.value; });
 
-    // DUB DECK
     const dubMixEl = document.getElementById('dubMix');
     const dubFbUI  = document.getElementById('dubFb');
     const dubTimeEl = document.getElementById('dubTime');
@@ -1416,7 +1906,54 @@
       if (drumsSendGain) drumsSendGain.gain.setValueAtTime(v, ctx ? ctx.currentTime : 0);
     });
 
-    // Dub freeze
+    const dubHPEl = document.getElementById('dubHP');
+    dubHPEl.addEventListener('input', () => {
+      const v = Number(dubHPEl.value);
+      document.getElementById('dubHPVal').innerText = v+'Hz';
+      if (dubFbHPF) dubFbHPF.frequency.setValueAtTime(v, ctx ? ctx.currentTime : 0);
+    });
+    const dubDriveEl = document.getElementById('dubDrive');
+    dubDriveEl.addEventListener('input', () => {
+      const v = Number(dubDriveEl.value);
+      document.getElementById('dubDriveVal').innerText = v.toFixed(0);
+      if (dubDrive) dubDrive.curve = makeDistortionCurve(v);
+    });
+    const panAmtEl = document.getElementById('panAmt');
+    panAmtEl.addEventListener('input', () => {
+      const v = Number(panAmtEl.value);
+      document.getElementById('panAmtVal').innerText = v.toFixed(2);
+      if (dubPanLFOMod) dubPanLFOMod.gain.setValueAtTime(v, ctx ? ctx.currentTime : 0);
+    });
+    const panRateEl = document.getElementById('panRate');
+    panRateEl.addEventListener('input', () => {
+      const v = Number(panRateEl.value);
+      document.getElementById('panRateVal').innerText = v.toFixed(2)+'Hz';
+      if (dubPanLFO) dubPanLFO.frequency.setValueAtTime(v, ctx ? ctx.currentTime : 0);
+    });
+    const wowRateEl = document.getElementById('wowRate');
+    wowRateEl.addEventListener('input', () => {
+      const v = Number(wowRateEl.value);
+      document.getElementById('wowRateVal').innerText = v.toFixed(2)+'Hz';
+      if (dubWowLFO) dubWowLFO.frequency.setValueAtTime(v, ctx ? ctx.currentTime : 0);
+    });
+    const wowAmtEl = document.getElementById('wowAmt');
+    wowAmtEl.addEventListener('input', () => {
+      const v = Number(wowAmtEl.value);
+      document.getElementById('wowAmtVal').innerText = v.toFixed(1)+'ms';
+      if (dubWowMod) dubWowMod.gain.setValueAtTime(v/1000.0, ctx ? ctx.currentTime : 0);
+    });
+    const duckDubEl = document.getElementById('duckDub');
+    duckDubEl.addEventListener('input', () => {
+      const v = Number(duckDubEl.value);
+      document.getElementById('duckDubVal').innerText = v.toFixed(2);
+    });
+    const hissEl = document.getElementById('hiss');
+    hissEl.addEventListener('input', () => {
+      const v = Number(hissEl.value);
+      document.getElementById('hissVal').innerText = v.toFixed(3);
+      if (dubHissGain) dubHissGain.gain.setValueAtTime(v, ctx ? ctx.currentTime : 0);
+    });
+
     document.getElementById('dubFreezeBtn').addEventListener('click', () => {
       if (!dubFbGain) return;
       isDubFrozen = !isDubFrozen;
@@ -1429,7 +1966,6 @@
       }
     });
 
-    // CHORD SYNTH
     document.getElementById('dubKeySel').addEventListener('change', (e)=> { dubRoot = Number(e.target.value); });
     document.getElementById('chordTypeSel').addEventListener('change', (e)=> { chordType = e.target.value; });
 
@@ -1472,13 +2008,201 @@
       document.getElementById('lfoAmtVal').innerText = lfoAmtHz.toFixed(0);
       if (chordLFOAmt) chordLFOAmt.gain.setValueAtTime(lfoAmtHz, ctx ? ctx.currentTime : 0);
     });
+
+    const chDubEl = document.getElementById('chDubSend');
+    chDubEl.addEventListener('input', () => {
+      const v = Number(chDubEl.value);
+      document.getElementById('chDubSendVal').innerText = v.toFixed(2);
+      if (chordDubSend) chordDubSend.gain.setValueAtTime(v, ctx ? ctx.currentTime : 0);
+    });
+    const chRevEl = document.getElementById('chRevSend');
+    chRevEl.addEventListener('input', () => {
+      const v = Number(chRevEl.value);
+      document.getElementById('chRevSendVal').innerText = v.toFixed(2);
+      if (chordRevSend) chordRevSend.gain.setValueAtTime(v, ctx ? ctx.currentTime : 0);
+    });
+    const envAmtEl = document.getElementById('envAmt');
+    envAmtEl.addEventListener('input', () => {
+      chordEnvAmt = Number(envAmtEl.value);
+      document.getElementById('envAmtVal').innerText = chordEnvAmt+'Hz';
+    });
+    const envDecEl = document.getElementById('envDec');
+    envDecEl.addEventListener('input', () => {
+      chordEnvDecay = Number(envDecEl.value);
+      document.getElementById('envDecVal').innerText = chordEnvDecay.toFixed(2)+'s';
+    });
+    const chorusMixEl = document.getElementById('chorusMix');
+    chorusMixEl.addEventListener('input', () => {
+      chorusMix = Number(chorusMixEl.value);
+      document.getElementById('chorusMixVal').innerText = chorusMix.toFixed(2);
+      if (chChorusWet) chChorusWet.gain.setValueAtTime(chorusMix, ctx ? ctx.currentTime : 0);
+    });
+    const chorusRateEl = document.getElementById('chorusRate');
+    chorusRateEl.addEventListener('input', () => {
+      chorusRate = Number(chorusRateEl.value);
+      document.getElementById('chorusRateVal').innerText = chorusRate.toFixed(2)+'Hz';
+      if (chChorusLFO) chChorusLFO.frequency.setValueAtTime(chorusRate, ctx ? ctx.currentTime : 0);
+    });
+    const chorusDepthEl = document.getElementById('chorusDepth');
+    chorusDepthEl.addEventListener('input', () => {
+      chorusDepthMs = Number(chorusDepthEl.value);
+      document.getElementById('chorusDepthVal').innerText = chorusDepthMs.toFixed(1)+'ms';
+      if (chChorusLFOMod) chChorusLFOMod.gain.setValueAtTime(chorusDepthMs/1000.0, ctx ? ctx.currentTime : 0);
+    });
+  }
+
+  /* ----------------------- 4 Recording Decks ------------------- */
+  /**
+   * Each deck uses:
+   * - <audio> element for playback (loop capable)
+   * - MediaElementSourceNode → per-deck Gain → deckOutGain (post-rec tap)
+   * - MediaRecorder(recorderDest.stream) to record machine output
+   */
+  const DECK_IDS = ['A','B','C','D'];
+  const decks = {}; // { A: {audioEl, source, gain, recorder, chunks, blob, loopEl, ... }, ... }
+
+  function setupDecks(){
+    DECK_IDS.forEach(id => {
+      const deck = decks[id] = {
+        id,
+        audioEl: document.getElementById(`deck${id}Audio`),
+        loopEl: document.getElementById(`deck${id}Loop`),
+        statusEl: document.getElementById(`deck${id}Status`),
+        timeEl: document.getElementById(`deck${id}Time`),
+        volEl: document.getElementById(`deck${id}Vol`),
+        volValEl: document.getElementById(`deck${id}VolVal`),
+        recBtn: document.getElementById(`deck${id}Rec`),
+        stopBtn: document.getElementById(`deck${id}Stop`),
+        playBtn: document.getElementById(`deck${id}Play`),
+        saveBtn: document.getElementById(`deck${id}Save`),
+        loadBtn: document.getElementById(`deck${id}LoadBtn`),
+        loadInput: document.getElementById(`deck${id}Load`),
+        recorder: null,
+        chunks: [],
+        blob: null,
+        source: null,
+        gain: null,
+        volume: 1.0,
+        isRecording: false
+      };
+
+      // Loop toggle reflects on <audio>
+      deck.loopEl.addEventListener('change', () => {
+        deck.audioEl.loop = deck.loopEl.checked;
+      });
+
+      // Volume controls (gain node in WebAudio)
+      deck.volEl.addEventListener('input', () => {
+        deck.volume = Number(deck.volEl.value);
+        deck.volValEl.innerText = deck.volume.toFixed(2);
+        if (deck.gain && ctx) deck.gain.gain.setValueAtTime(deck.volume, ctx.currentTime);
+      });
+
+      // Hook up buttons
+      deck.recBtn.addEventListener('click', () => startDeckRecording(deck));
+      deck.stopBtn.addEventListener('click', () => stopDeck(deck));
+      deck.playBtn.addEventListener('click', () => togglePlayDeck(deck));
+      deck.saveBtn.addEventListener('click', () => {
+        if (!deck.blob){ deck.statusEl.innerText = 'Nothing to save'; return; }
+        downloadBlob(deck.blob, `deck_${id}.webm`);
+      });
+      deck.loadBtn.addEventListener('click', () => deck.loadInput.click());
+      deck.loadInput.addEventListener('change', () => {
+        const f = deck.loadInput.files && deck.loadInput.files[0];
+        if (!f) return;
+        deck.blob = f;
+        deck.audioEl.src = URL.createObjectURL(f);
+        deck.statusEl.innerText = 'Loaded file';
+      });
+
+      // Update the time readout while playing
+      deck.audioEl.addEventListener('timeupdate', () => {
+        deck.timeEl.innerText = fmtTime(deck.audioEl.currentTime);
+      });
+      deck.audioEl.addEventListener('ended', () => {
+        deck.timeEl.innerText = fmtTime(0);
+      });
+    });
+  }
+
+  /** Ensure each deck's <audio> is connected to the graph once ctx exists. */
+  function ensureDeckGraphs(){
+    if (!ctx || !deckOutGain) return;
+    DECK_IDS.forEach(id => {
+      const d = decks[id];
+      if (!d) return;
+      if (!d.source){
+        d.source = ctx.createMediaElementSource(d.audioEl);
+        d.gain = ctx.createGain(); d.gain.gain.value = d.volume;
+        d.source.connect(d.gain).connect(deckOutGain);
+      }
+    });
+  }
+
+  function startDeckRecording(deck){
+    if (!ctx) powerOn(); // ensure graph exists
+    if (!recorderDest || !recorderDest.stream){
+      deck.statusEl.innerText = 'Recorder not available';
+      return;
+    }
+    try{
+      deck.recorder = new MediaRecorder(recorderDest.stream);
+    }catch(e){
+      deck.statusEl.innerText = 'MediaRecorder not supported';
+      return;
+    }
+    deck.chunks = [];
+    deck.recorder.ondataavailable = (ev) => { if (ev.data && ev.data.size > 0) deck.chunks.push(ev.data); };
+    deck.recorder.onstop = () => {
+      deck.blob = new Blob(deck.chunks, { type: deck.recorder.mimeType || 'audio/webm' });
+      deck.audioEl.src = URL.createObjectURL(deck.blob);
+      deck.statusEl.innerText = 'Recorded';
+      deck.timeEl.innerText = fmtTime(0);
+      deck.isRecording = false;
+    };
+    deck.recorder.start();
+    deck.isRecording = true;
+    deck.statusEl.innerText = 'Recording...';
+  }
+
+  function stopDeck(deck){
+    // Stop recording (if any)
+    if (deck.isRecording && deck.recorder && deck.recorder.state !== 'inactive'){
+      deck.recorder.stop();
+      return;
+    }
+    // Stop playback (if any)
+    if (!deck.audioEl.paused){
+      deck.audioEl.pause();
+      deck.audioEl.currentTime = 0;
+      deck.statusEl.innerText = 'Stopped';
+      deck.timeEl.innerText = fmtTime(0);
+    }
+  }
+
+  function togglePlayDeck(deck){
+    if (!ctx) powerOn();
+    if (!deck.audioEl.src){
+      deck.statusEl.innerText = 'No audio yet';
+      return;
+    }
+    if (deck.audioEl.paused){
+      deck.audioEl.loop = deck.loopEl.checked;
+      deck.audioEl.play();
+      deck.statusEl.innerText = 'Playing';
+    } else {
+      deck.audioEl.pause();
+      deck.statusEl.innerText = 'Paused';
+    }
   }
 
   /* --------------------------- Entry --------------------------- */
   function main(){
     connectSliders();
-    loadPreset('classic'); // initialize UI with a musical default
+    loadPreset('classic');
     buildSequencer();
+
+    setupDecks();
 
     document.getElementById('powerBtn').addEventListener('click', powerOn);
     document.getElementById('playBtn').addEventListener('click', play);
